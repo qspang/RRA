@@ -1,0 +1,53 @@
+{
+  "status": "completed",
+  "pages": 20,
+  "acceptance_checks": 41,
+  "unit_tests_passed": 76,
+  "reference_pages": 27,
+  "initial_pipeline_seconds": 203.393,
+  "generation_seconds": 85.223,
+  "initial_tokens": 699174,
+  "followup_review_seconds": 58.17165230198589,
+  "combined_processing_seconds": 261.5646523019859,
+  "combined_tokens": 702080,
+  "scope": "首次流水线加补充审阅分级复核的处理时长之和，未计两次运行间的开发排查间隔；不是整段对话的墙钟时间。",
+  "schemes": [
+    {
+      "scheme": "北方案",
+      "all_events": 55,
+      "main_events": 17,
+      "sidecar_events": 38,
+      "scene_images": 4
+    },
+    {
+      "scheme": "南方案",
+      "all_events": 48,
+      "main_events": 13,
+      "sidecar_events": 35,
+      "scene_images": 3
+    }
+  ],
+  "source_run": "reference_style_20261025",
+  "model": "claude-sonnet-4-6",
+  "max_concurrency": 15,
+  "limitations": [
+    "测试路线涉及生态红线及跨越角待复核，非已批准建设方案。",
+    "复用规划响应与底图缓存；不含重新规划耗时。",
+    "含补充证据复核，不代表所有自动审阅首次通过。",
+    "未提供平台结算单价，不估算金额。"
+  ],
+  "artifacts": [
+    {
+      "file": "完整报告_参照大埔精简版.pdf",
+      "sha256": "802d320a2ebc4acace4b2168cc101516aa9c45a3820ff27cd17a7c9b6ca2f19c"
+    },
+    {
+      "file": "完整报告_参照大埔精简版.docx",
+      "sha256": "5fd8cafc2369f464d058b9630d668c96e4223669347804309149a67a9d1d33b2"
+    },
+    {
+      "file": "图3.3-1_区域高亮.jpg",
+      "sha256": "9cd873de26402c78aac4e34dba4449d55066274f473b0b9851beb24be89f0c36"
+    }
+  ]
+}

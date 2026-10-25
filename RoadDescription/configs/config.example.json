@@ -1,0 +1,130 @@
+{
+  "planner_url": "http://127.0.0.1:5000",
+  "dataset": "roaddata/preprocessed",
+  "reference_pdf": "roaddata/reference/大埔章节3.pdf",
+  "project_title": "输电线路路径报告（示例）",
+  "start_name": "项目起点",
+  "end_name": "项目终点",
+  "voltage_kv": 500,
+  "request": {
+    "coarse_cell_size": 100,
+    "fine_cell_size": 100,
+    "scheme_count": 1,
+    "solver_options": {
+      "pause_after_coarse_review": false
+    }
+  },
+  "schemes": [],
+  "llm": {
+    "enabled": false,
+    "api_base": "",
+    "model_id": "",
+    "api_key_env": "ROAD_LLM_API_KEY",
+    "credential_file": ".env",
+    "timeout_s": 180,
+    "max_concurrency": 15,
+    "max_retries": 2,
+    "max_tokens": 3000
+  },
+  "vlm": {
+    "enabled": false,
+    "api_base": "",
+    "model_id": "",
+    "api_key_env": "ROAD_VLM_API_KEY",
+    "credential_file": ".env",
+    "timeout_s": 180,
+    "max_concurrency": 15,
+    "max_retries": 2,
+    "max_tokens": 3000
+  },
+  "photos": [],
+  "name_overrides": {},
+  "admin_boundary": null,
+  "admin_name_field": "name",
+  "nearby_m": 300,
+  "use_satellite": true,
+  "section_number": "3.3",
+  "page_start": 17,
+  "soffice": "",
+  "output_dir": "outputs/local_run",
+  "start": [
+    3000,
+    11000
+  ],
+  "end": [
+    18000,
+    5000
+  ],
+  "agents": {
+    "enabled": [
+      "route_description",
+      "route_comparison",
+      "route_compliance"
+    ],
+    "output_dir": "outputs/local_run/agents",
+    "dem_path": "roaddata/dem/terrain.tif",
+    "elevation_step_m": 25,
+    "factor_nearby_m": 1000,
+    "ecology_nearby_m": 300,
+    "building_screen_width_m": 60,
+    "supplemental_file": null,
+    "route_comparison": {},
+    "route_compliance": {
+      "scheme_id": null,
+      "max_crossing_figures": null,
+      "include_dem_profiles": false
+    },
+    "planner_source": null,
+    "assembly": {
+      "enabled": true,
+      "scheme_id": null,
+      "include_candidate_books": false
+    }
+  },
+  "route_generation": {
+    "enabled": true,
+    "attempt_timeout_s": 360,
+    "max_attempts": 6,
+    "min_separation_m": 150,
+    "offset_fractions": [
+      0.08,
+      0.15,
+      0.22
+    ],
+    "maximum_length_ratio": 1.8
+  },
+  "quality_review": {
+    "enabled": true,
+    "vision": true,
+    "max_pages": 320
+  },
+  "supplemental_layers": [
+    {
+      "path": "roaddata/source/side_roads.gdb",
+      "layer": "乡道_补充",
+      "category": "道路（补充，等级待核）"
+    },
+    {
+      "path": "roaddata/source/ecology.gdb",
+      "layer": "生态保护红线一般区域",
+      "category": "生态保护红线一般区域",
+      "replace_report_category": true
+    },
+    {
+      "path": "roaddata/source/ecology.gdb",
+      "layer": "一级水源保护区",
+      "category": "一级水源保护区",
+      "replace_report_category": true
+    },
+    {
+      "path": "roaddata/source/ecology.gdb",
+      "layer": "自然保护区缓冲区",
+      "category": "自然保护区缓冲区",
+      "replace_report_category": true
+    }
+  ],
+  "basemap_mode": "browser",
+  "basemap_annotations": true,
+  "report_style": "reference",
+  "project_root": ".."
+}

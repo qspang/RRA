@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>路径报告工作台</title>
+<style>body{font:16px system-ui;max-width:950px;margin:50px auto;background:#f6f8fb;color:#182b41}section{background:white;padding:28px;border-radius:12px;margin-bottom:20px}input,button{font:inherit;padding:9px;margin:7px}button{background:#164f7d;color:white;border:0;border-radius:5px;cursor:pointer}pre{max-height:320px;overflow:auto;white-space:pre-wrap;font-size:13px}a{color:#164f7d}label{display:block}</style>
+<h1>路径报告工作台</h1><section><p>输入本地地图坐标，生成路径描述、方案比选和合规分析。与配置相同的起终点可复用已归档路线。</p>
+<form id="form"><label>起点 X、Y <input id="start" placeholder="留空使用配置起点"></label><label>终点 X、Y <input id="end" placeholder="留空使用配置终点"></label>
+<label><input type="checkbox" id="replan">重新规划两条路线</label><button>生成报告</button><button type="button" id="cancel">取消当前任务</button></form><p id="status">尚未提交任务</p></section>
+<section><h2>成果下载</h2><div id="files"></div></section><section><h2>运行日志</h2><pre id="log"></pre></section>
+<script>let job=null,timer=null;const byId=id=>document.getElementById(id);
+async function call(url,options){const r=await fetch(url,options);const d=await r.json();if(!r.ok)throw Error(d.error||r.status);return d}
+async function poll(){try{const s=await call('/api/reports/'+job);byId('status').textContent=s.status+' · '+(s.progress?.stage||'等待运行');
+byId('files').replaceChildren(...s.artifacts.map(a=>{const p=document.createElement('p'),link=document.createElement('a');link.textContent=a.name;link.href='/api/reports/'+job+'/files/'+a.name.split('/').map(encodeURIComponent).join('/');p.append(link);return p}));
+byId('log').textContent=await(await fetch('/api/reports/'+job+'/log')).text();if(['completed','failed','cancelled','review_required','interrupted'].includes(s.status))clearInterval(timer)}catch(e){byId('status').textContent=e.message}}
+byId('form').onsubmit=async e=>{e.preventDefault();try{const data={replan:byId('replan').checked};for(const k of ['start','end']){if(byId(k).value.trim()){const p=byId(k).value.split(/[,，\s]+/).map(Number);if(p.length!==2||p.some(x=>!Number.isFinite(x)))throw Error('坐标须为两个数字');data[k]=p}}const s=await call('/api/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});job=s.id;clearInterval(timer);timer=setInterval(poll,2000);await poll()}catch(e){byId('status').textContent=e.message}};
+byId('cancel').onclick=async()=>{if(job){await call('/api/reports/'+job+'/cancel',{method:'POST'});await poll()}};</script></html>

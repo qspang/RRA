@@ -1,0 +1,26 @@
+{
+  "_说明": "将materials数组加入配置。未确认素材不入稿；PDF页码从1开始。",
+  "materials": [
+    {
+      "id": "unique_material_id",
+      "scheme_id": "upper",
+      "route_geometry_hash": "从当前facts复制",
+      "approved": false,
+      "kind": "supplied_profile",
+      "path": "materials/真实设计断面.pdf",
+      "pages": [
+        1
+      ],
+      "caption": "真实图题",
+      "targets": [
+        "description",
+        "comparison",
+        "compliance"
+      ],
+      "fact_ids": [
+        "当前事件或区段fact_id"
+      ],
+      "event_id": "当前合规event_id"
+    }
+  ]
+}

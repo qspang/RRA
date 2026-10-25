@@ -1,0 +1,69 @@
+# Local environments, credentials and caches
+.venv/
+.tools/
+.secrets/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.egg-info/
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+*.log
+*.pem
+*.key
+.DS_Store
+~$*
+/local_archive/
+/data/
+# Machine-specific configs; sanitized examples are deliberately included
+/*.json
+/configs/*
+!/configs/README.md
+!/configs/config.example.json
+!/configs/config.description.example.json
+# Local source documents and historical notes
+/*.txt
+!/requirements.txt
+!/requirements-lock.txt
+/*.pdf
+/*.doc
+/*.docx
+/*.zip
+# Exactly one curated output, with an explicit file allowlist
+/outputs/*
+!/outputs/latest/
+/outputs/latest/*
+!/outputs/latest/README.md
+!/outputs/latest/run_summary.json
+!/outputs/latest/完整报告_参照大埔精简版.pdf
+!/outputs/latest/完整报告_参照大埔精简版.docx
+!/outputs/latest/图3.3-1_区域高亮.jpg
+# Large GIS inputs belong in external/local data storage
+*.gdb/
+*.gpkg
+*.tif
+*.tiff
+*.npy
+*.npz
+*.shp
+*.shx
+*.dbf
+
+# Local engineering data: publish instructions only, never data or API settings
+/roaddata/*
+!/roaddata/README.md
+
+# Developer-only caches, coverage and build/editor leftovers
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+/build/
+/dist/
+*.swp
+*.swo
+*.bak

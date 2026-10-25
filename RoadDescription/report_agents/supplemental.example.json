@@ -1,0 +1,120 @@
+{
+  "_说明": "仅结构示例：替换方案ID和真实geometry_hash、填写资料并确认后再接入。当前未确认，不作为事实。",
+  "schemes": {
+    "upper": {
+      "route_geometry_hash": "从本次agents/facts.json复制真实值",
+      "surveys": {
+        "demolition": {
+          "confirmed": false,
+          "source_file": "",
+          "records": [
+            {
+              "kind": "砖瓦屋",
+              "quantity": null,
+              "unit": "m2"
+            }
+          ]
+        },
+        "forestry": {
+          "confirmed": false,
+          "source_file": "",
+          "forest_length_m": null,
+          "records": [
+            {
+              "species": "待填写",
+              "height_m": null,
+              "felling_area_m2": null
+            }
+          ]
+        }
+      },
+      "crossing_designs": [],
+      "_crossing_design示例": {
+        "confirmed": false,
+        "source_file": "",
+        "source_uids": [
+          "从跨越结果复制"
+        ],
+        "chainage_m": null,
+        "tower_arrangement": "待填写",
+        "span_m": null,
+        "tension_length_m": null,
+        "design_angle_deg": null,
+        "clearance_note": "待填写",
+        "joint_note": "待填写"
+      },
+      "outage": {
+        "confirmed": false,
+        "source_file": "",
+        "text": ""
+      },
+      "agreements": [],
+      "_agreement示例": {
+        "region": "真实行政区域",
+        "department": "真实部门",
+        "status": "pending",
+        "reference": "",
+        "conditions": "",
+        "confirmed": false,
+        "source_file": ""
+      },
+      "required_departments": [],
+      "specialists": {
+        "terrain": {
+          "confirmed": false,
+          "source_file": "",
+          "text": "",
+          "records": [
+            {
+              "class": "待填写正式地形分类",
+              "start_m": null,
+              "end_m": null
+            }
+          ]
+        },
+        "traffic": {
+          "confirmed": false,
+          "source_file": "",
+          "text": "",
+          "records": []
+        },
+        "military": {
+          "confirmed": false,
+          "source_file": "",
+          "text": "",
+          "records": []
+        },
+        "mining": {
+          "confirmed": false,
+          "source_file": "",
+          "text": "",
+          "records": []
+        },
+        "ecology": {
+          "confirmed": false,
+          "source_file": "",
+          "text": "",
+          "records": [
+            {
+              "source_uids": [
+                "从生态结果source_uid复制"
+              ],
+              "measure": "待填写已确认处理措施"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "recommendation": {
+    "confirmed": false,
+    "source_file": "",
+    "scheme_id": null,
+    "route_geometry_hashes": {
+      "upper": "待填写",
+      "lower": "待填写"
+    },
+    "text": "",
+    "conflict_note": ""
+  }
+}

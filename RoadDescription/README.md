@@ -177,6 +177,265 @@ python -m report_agents --config configs/config.local.resolved.json --agents rou
 
 上面的 resolved 文件名以实际日志为准。仅做个人负责章节时，用 `configs/config.description.example.json` 创建configs/ 本地配置，再运行完整入口；它只启用路径描述插件、关闭合成，输出 3.3.1、3.3.2。
 
+## 如何复现已发布报告的南北两方案
+
+本节对应 `outputs/latest/完整报告_参照大埔精简版.pdf`，参数来自其实际归档的 `upper/request.json`、`lower/request.json` 和返回的 `replay_request`，不是另选的一组演示点。
+
+**起终点不是启动 opt_v56 服务时的参数，而是在服务启动后提交给规划接口的请求参数。** 后端按前文加载正确数据并保持运行；报告端以同一起终点、两个不同控制点分别调用两次 `POST /api/plan`，每次 `scheme_count=1`，再组合成北/南方案。
+
+| 参数 | 北方案 upper | 南方案 lower |
+| --- | --- | --- |
+| 起点 `(x,y)` | `(3000,11000)` | `(3000,11000)` |
+| 终点 `(x,y)` | `(18000,5000)` | `(18000,5000)` |
+| 必经控制点 `(x,y)` | `(11000,9200)` | `(10000,6800)` |
+| 控制点容差 | 100 米 | 100 米 |
+| coarse_cell_size / fine_cell_size | 100 / 100 米 | 100 / 100 米 |
+| scheme_count | 1 | 1 |
+| pause_after_coarse_review | false | false |
+| 历史路线长度 | 16651.503511678377 米 | 16716.684803536253 米 |
+| 原始控制点标识 | auto_1 | auto_2 |
+
+这些数值是当前工程的**局部平面坐标（米）**，不是经纬度。原始投影坐标系为 `EPSG:4548`，地图偏移为 `[-420005.277721959, -2683880.5435293745]`，约定 `局部坐标 = 投影坐标 + offset`。换工程或坐标系后不能直接照用。原案例终点涉及生态红线，部分跨越亦需专业复核；这是用于检验报告覆盖能力的案例，不是批准施工的推荐路线。
+
+### 方式一：按原控制点重新规划并生成报告
+
+先完成上文的后端启动、数据和报告环境准备。在 RoadDescription 根目录执行下列代码，生成**不提交 Git**的本地案例配置。已有 `configs/config.local.json` 时沿用其中的模型、渲染器和数据配置，否则从公开示例生成后还要自行填好这些项：
+
+```python
+# 保存为临时脚本执行，或在项目根目录的 Python 交互环境执行。
+import json
+from pathlib import Path
+
+base = Path("configs/config.local.json")
+if not base.exists():
+    base = Path("configs/config.example.json")
+cfg = json.loads(base.read_text(encoding="utf-8"))
+cfg.update(
+    project_root="..",
+    project_title="路径方案及合规分析（参考章节精简版）",
+    start_name="多场景测试起点", end_name="多场景测试终点",
+    voltage_kv=500,
+    start=[3000, 11000], end=[18000, 5000],
+    request={
+        "coarse_cell_size": 100, "fine_cell_size": 100,
+        "scheme_count": 1,
+        "solver_options": {"pause_after_coarse_review": False}
+    },
+    schemes=[
+        {"id": "upper", "waypoint": [11000, 9200]},
+        {"id": "lower", "waypoint": [10000, 6800]}
+    ],
+    route_generation={"enabled": False},
+    report_style="reference",
+    output_dir="outputs/case_reproduce/report"
+)
+cfg.setdefault("agents", {}).update(
+    enabled=["route_description", "route_comparison", "route_compliance"],
+    output_dir="outputs/case_reproduce/report/agents",
+    route_compliance={"scheme_id": None, "max_crossing_figures": None,
+                      "include_dem_profiles": False},
+    assembly={"enabled": True, "scheme_id": None,
+              "include_candidate_books": False}
+)
+target = Path("configs/config.case-reproduce.json")
+if target.exists():
+    raise FileExistsError("案例配置已存在，请检查后修改，避免覆盖本地设置")
+target.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+print(target)
+```
+
+然后检查配置并发起规划：
+
+```bash
+python tools/check_setup.py --config configs/config.case-reproduce.json --deep
+python -m road_description --config configs/config.case-reproduce.json --plan
+```
+
+`route_generation.enabled=false` 是关键：固定使用这里的两个控制点，不再次自动筛选。流水线会把每个 `waypoint` 转成 `must_pass_points`，容差固定为100米；新控制点ID分别为 upper/lower，原请求为 auto_1/auto_2，这只是标识变化。`plan_run_id` 每次新建，不复用原任务ID。输出的每个方案目录会保留新的 request/response，方便对照。
+
+底图、模型、审阅与字体也影响最终报告：原发布版使用浏览器底图及标注、启用LLM/VLM和审阅（并发上限15）。从公开示例创建配置时模型默认关闭，必须自行填入API/model_id/凭据并启用后才是模型生成流程；设置 use_satellite=false 可验证矢量图流程，但图件不会与发布版相同。模型叙述与 Word/PDF 分页也不保证逐字、逐像素一致。
+
+**不要用5010报告服务的 `replan:true` 来复现固定控制点。** 当前该入口只接受 start/end/replan，重新规划时会清空 schemes 并打开自动搜索，因此本案例用上面的CLI。CLI成功后，如需通过5010复用这次路线，可用案例配置启动报告服务，并提交相同起终点、`replan:false`；这会复用已生成的路线归档，重新生成报告。
+
+### 锁定原后端的展开参数
+
+上述最小 request 与当时发出的请求字段一致，但未填写的求解选项由后端默认值决定。若后端版本/默认配置变动，即使控制点相同也可能得到不同路线。下面保留当时响应中的**完整公共 replay_request 字段**（剔除两方案不同的控制点和由配置填写的起终点）。如需减少默认值差异，将此对象作为案例配置的 `request`，同时保持上方 start/end/schemes 不变；不要把这些字段放到启动命令环境变量中。
+
+<details>
+<summary>展开：历史公共规划参数（不含API地址和密钥）</summary>
+
+```json
+{
+  "cell_size": 100,
+  "coarse_cell_size": 100,
+  "coarse_review_action": null,
+  "coarse_review_segments": null,
+  "coarse_review_waypoints": null,
+  "feature_adjustments": {
+    "added_features": [],
+    "deleted_ids": [],
+    "modified_features": []
+  },
+  "fine_cell_size": 100,
+  "max_forbidden_run": 1000.0,
+  "min_tower_spacing": 100.0,
+  "must_pass_polylines": [],
+  "planning_bounds": [
+    [
+      830.1886685874921,
+      902.272029891923
+    ],
+    [
+      41442.992750710044,
+      -44.60530805923554
+    ],
+    [
+      41442.992750710044,
+      17349.119704304452
+    ],
+    [
+      994.8629882311719,
+      18213.65988243377
+    ]
+  ],
+  "relax_mode": "manual",
+  "relax_regions": [],
+  "scheme_count": 1,
+  "solver_options": {
+    "allow_base_solver_fallback": false,
+    "allow_range_adaptive_widening": false,
+    "coarse_corridor_candidate_count": 1.0,
+    "coarse_diversity_penalty": 250.0,
+    "coarse_diversity_radius_m": 500.0,
+    "coarse_engineering_proxy_weight": 1.0,
+    "coarse_review_action": null,
+    "cost_model_version": "v1",
+    "deturn_ranked_evaluation_limit": 8,
+    "enable_any_angle": false,
+    "enable_bidirectional": true,
+    "enable_deturn": true,
+    "enable_diversity_penalty": false,
+    "enable_local_fine_grid": true,
+    "enable_precise_cross_profile": false,
+    "enable_precise_optimality_proof": false,
+    "enable_precise_solver": true,
+    "enable_race_layered_scheduling": false,
+    "enable_relax_corridor": true,
+    "enable_relax_exit_lock": false,
+    "enable_repair_stage1": true,
+    "enable_repair_stage2": true,
+    "enable_repair_stage3": true,
+    "enable_semantic_coarse": true,
+    "heuristic_continuous_cross_dedup": true,
+    "heuristic_forbidden_bucket_m": 0.0,
+    "heuristic_improvement_patience_s": 5.0,
+    "heuristic_label_limit": 0,
+    "heuristic_local_parallel": true,
+    "heuristic_merge_transition_feature_ids": true,
+    "heuristic_span_bucket_m": 0.0,
+    "heuristic_successor_bucket_degrees": 30.0,
+    "heuristic_successors_per_bucket": 2.0,
+    "heuristic_weight": 1.5,
+    "local_fine_constraint_candidates": 4,
+    "local_fine_max_expansions": 2,
+    "parallel_bidirectional_precise": true,
+    "pause_after_coarse_review": false,
+    "precise_corridor_half_width_m": 400.0,
+    "precise_cross_cost_mode": "multicell",
+    "precise_cross_state_limit": 2000000,
+    "precise_deterministic_tower_transition": true,
+    "precise_direction_bucket_degrees": 10.0,
+    "precise_engine": "python",
+    "precise_feasible_search_mode": "heuristic",
+    "precise_feasible_slice_states": 100000,
+    "precise_feasible_slice_time_s": 20.0,
+    "precise_feasible_state_limit": 2000000,
+    "precise_feasible_time_budget_s": 600.0,
+    "precise_heuristic_mode": "admissible",
+    "precise_max_edge_length_m": 1200.0,
+    "precise_optimize_time_budget_s": 0.0,
+    "precise_proof_nested_widths_only": false,
+    "precise_rust_span": false,
+    "precise_vertex_stride_m": 100.0,
+    "precise_vertex_stride_source": "request_or_default",
+    "relax_coarse_k": 1.0,
+    "relax_cost_per_m": 1.0,
+    "relax_mode": "manual",
+    "search_angle_tower_cost_weight": 1.0,
+    "search_cross_length_cost_weight": 1.0,
+    "search_cross_one_time_cost_weight": 1.0,
+    "search_parallel_bonus_weight": 1.0,
+    "search_straight_tower_cost_weight": 1.0,
+    "search_tower_one_time_cost_weight": 1.0,
+    "search_tower_point_cost_weight": null,
+    "search_tower_run_cost_weight": null,
+    "search_wire_cost_weight": 1.0,
+    "segmented_fallback_length_m": 2400.0,
+    "semantic_coarse": {
+      "anchor_radius_m": 300.0,
+      "area_drop_m2": 10000.0,
+      "cluster_gap_m": 0.0,
+      "diameter_m": 500.0,
+      "elongation_ratio": 5.0,
+      "event_bits": 16,
+      "fee_thresholds": [
+        100.0,
+        500.0,
+        1500.0
+      ],
+      "ratio_thresholds": [
+        0.005,
+        0.02,
+        0.05
+      ],
+      "state_limit": 200000,
+      "width_m": 200.0
+    },
+    "solve_range_margin_m": 500.0,
+    "tower_cost_model_version": "statistical_towers_v1",
+    "use_rtree_index": false,
+    "use_sdf_heuristic": false,
+    "use_sector_prefilter": false
+  },
+  "turn_weight": 1.0
+}
+```
+
+</details>
+
+其中包含原 planning_bounds、空 feature_adjustments、空 relax_regions 及求解参数。后端版本还必须兼容这些字段；环境变量开关、算法代码、并发与时间预算同样可能影响搜索结果，不能凭这份参数保证重新搜索得到完全相同的几何。
+
+### 方式二：精确使用已发布案例的历史路线
+
+若目标是复核**同一条历史路线**上的地物和报告，应另向维护方领取原运行的归档输入，而不是重新求解。需要把以下文件放到案例配置指定的 `outputs/case_reproduce/report/`（此输入包没有上传 Git）：
+
+```text
+map.json
+map.raw.json.gz
+upper/request.json
+upper/response.json
+lower/request.json
+lower/response.json
+```
+
+使用方式一生成的案例配置，保持两个 schemes、`route_generation.enabled=false`，这次**不加 --plan**：
+
+```bash
+python -m road_description --config configs/config.case-reproduce.json
+```
+
+不要把历史 route_facts 或其他已生成结论一起混入新输出目录，先从响应与本地地物重新提取。要完全离线还需关闭在线底图和模型；这样保留历史路线几何，但文案/图件将采用回退方式。原始地图/响应与地物仍须同一版本。
+
+可核对的原始数据 SHA256：
+
+| 文件 | SHA256 |
+| --- | --- |
+| preprocessed/manifest.json | `0d0b25a77379fd21891b8eef582f2688de7e9574c84cdb49db54f45664a220ec` |
+| preprocessed/m1/standardized_features.gpkg | `56853dde2e45d858ddd74ff3a5d32b82f561e9602791a59fd94d648ef0a935a1` |
+| preprocessed/m3/rule_config.json | `6f0f050a9194dfbafb9b634517291d713bfa1a903722fd0635b5690a277e614b` |
+
+报告生成后对照 `route_facts.json` 的 scheme.geometry_hash（由项目算法计算，不是直接对文件取哈希）：北方案为 `4a4a4644906a6d966903576329f45f1410f24c6ace391ea8f8a1098199e8c25d`，南方案为 `4c56dcb9b437de9c6256fb64cbeb63b1987eedbb648d7914f8dbca6819ecaabd`。补充道路/生态GDB、DEM和原稿也应领取同版；只有这三个预处理哈希一致不足以说明所有报告材料一致。
+
 ## 接口、资料与校验
 
 ```bash

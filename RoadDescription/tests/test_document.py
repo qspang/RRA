@@ -27,3 +27,18 @@ def test_renderer_does_not_claim_stale_pdf_as_new_success(tmp_path):
     result=render_pdf(docx,str(binary))
     assert result['status']=='failed'
     assert stale.read_bytes()==b'old pdf'
+
+
+def test_forbidden_relation_detected_in_table_and_header():
+    import pytest
+    from road_description.terminology import check_document, report_text
+
+    for placement in ('table', 'header'):
+        doc = Document()
+        paragraph = (doc.add_table(1, 1).cell(0, 0).paragraphs[0] if placement == 'table'
+                     else doc.sections[0].header.paragraphs[0])
+        paragraph.add_run('线路交')
+        paragraph.add_run('叉位置')
+        with pytest.raises(ValueError, match='空间关系术语'):
+            check_document(doc)
+    assert report_text('交叉跨越配合停电，设计交叉角待核') == '跨越配合停电，设计跨越角待核'

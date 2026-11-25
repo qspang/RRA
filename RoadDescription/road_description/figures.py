@@ -243,7 +243,11 @@ def generate_figures(catalog,facts,out,key=''):
     region=[min(r.bounds[0] for r in routes)-6000,min(r.bounds[1] for r in routes)-6000,
             max(r.bounds[2] for r in routes)+6000,max(r.bounds[3] for r in routes)+6000]
     figures=[draw_map(catalog,facts['schemes'],out/'overview.png','南、北方案路径及周边地物分布',bounds=region,key=key,cache=out/'tiles',overview=True)]
-    if figures[0]['kind']=='vector_map':key=''
+    if figures[0]['kind']=='vector_map':
+        if key or getattr(catalog, 'basemap_key', ''):
+            print('[底图提示] 未取得天地图影像，后续图幅使用 GIS 矢量底图。请检查 opt_v56 的 TIANDITU_TK、底图授权、网络及浏览器。', flush=True)
+        key = ''
+        catalog.basemap_key = ''
     for scheme in facts['schemes']:
         chosen=representative_events(scheme['events']) if compact else list(scheme['events'])+list(scheme.get('terrain',[]))
         for segment in ([] if compact else scheme['segments']):

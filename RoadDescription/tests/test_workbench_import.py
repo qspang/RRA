@@ -39,7 +39,33 @@ def test_import_pair_stages_only_its_own_evidence(tmp_path):
     for side in ('upper','lower'):
         metadata=json.loads((folder/'output'/side/'request.json').read_text())
         assert metadata['start_x']==0 and metadata['end_x']>1300
-    assert client.get('/api/kml-jobs/recent').json['ids']==[job]
+    recent = client.get('/api/kml-jobs/recent').json
+    assert recent['ids']==[job]
+    assert recent['jobs'][0]['title']==queued['project_title']
+    assert recent['jobs'][0]['created_at'] and not recent['jobs'][0]['has_report']
     state=client.get('/api/kml-jobs/'+job).json
     assert state['status']=='queued' and all(not files for files in state['groups'].values())
     queue.assert_called_once()
+
+
+def test_current_report_links_only_move_to_a_complete_delivery(tmp_path):
+    from road_description.report_files import GROUPS, publish_workbench_files
+
+    jobs = tmp_path/'workbench_jobs'
+    job = jobs/'first'
+    for plugin, stems in GROUPS.values():
+        result = job/'output'/'agents'/plugin/'result.json'
+        result.parent.mkdir(parents=True, exist_ok=True)
+        result.write_text('{}')
+        for stem in stems:
+            for ext in ('.docx', '.pdf'):
+                path = job/'output'/(stem+ext)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+    assert publish_workbench_files(job)
+    assert publish_workbench_files(job)
+    shortcut = tmp_path/'最近成稿'
+    assert len(list(shortcut.iterdir())) == 10
+    assert (shortcut/'完整报告.pdf').resolve().name.startswith('完整报告_')
+    assert not publish_workbench_files(jobs/'incomplete')
+    assert shortcut.resolve() == job/'成稿'

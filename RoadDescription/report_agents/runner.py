@@ -25,6 +25,8 @@ def run_agents(config_path, selected=None, description_ready=False):
             write_json(ctx.output/'agent_run.json', state)
             log.event('agent_started',agent=identifier)
             result = agent.run(ctx)
+            if identifier == "route_description":
+                ctx.cache["description_narratives"] = result["narratives"]
             log.event('agent_completed',agent=identifier,status=result['status'],documents=len(result['documents']))
             destination = ctx.output/identifier/'result.json'
             result.update(agent=agent.manifest, provenance=ctx.provenance)

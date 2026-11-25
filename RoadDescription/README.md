@@ -14,7 +14,9 @@
 
 ## 查看结果
 
-[最新完整 PDF](outputs/latest/大埔南北候选路径综合分析.pdf) · [Word](outputs/latest/大埔南北候选路径综合分析.docx) · [案例说明](outputs/latest/README.md)
+本机最新工作台合册见 `outputs/最近成稿/完整报告.pdf`，同目录有 Word 和四份分册。网页顶部可直接打开合册、下载 Word，或展开「在线阅读合册」。历史任务按日期、项目名和状态切换。目录和旧实验复现命令见[输出目录说明](outputs/README.md)。
+
+[仓库样例 PDF](outputs/latest/大埔南北候选路径综合分析.pdf) · [Word](outputs/latest/大埔南北候选路径综合分析.docx) · [案例说明](outputs/latest/README.md)
 
 仓库仅保留这一套 48 页大埔 KML 合成样例。普通乡道的细碎事件不逐项铺满正文；`report_style: "reference"` 按参考章节选取主要对象和代表性截图，完整事件留在运行产生的 JSON/CSV 中。
 
@@ -51,9 +53,9 @@ cp -n .env.example .env
 ```
 
 1. 按[工程数据放置清单](roaddata/README.md)放齐预处理包、DEM、行政区、补充地物及参考 PDF。另向工程维护方领取**同一工程的两份地图快照**，按公开模板放在 `outputs/kml_seed/map.json` 和 `outputs/kml_seed/map.raw.json.gz`。如果使用已有配置，以其中 `output_dir` 指向的目录为准。
-2. 安装 LibreOffice，让 `soffice` 可执行，或按 `tools/prepare_office.py` 准备本地渲染环境。若只用矢量专题图，可设置 `use_satellite: false`。浏览器卫星底图模式还依赖可访问的规划地图页面、底图授权和本机 Chrome，当前适配器使用 `/usr/bin/google-chrome`。
+2. 安装 LibreOffice，让 `soffice` 可执行，或按 `tools/prepare_office.py` 准备本地渲染环境。公开 KML 模板默认 `use_satellite: false`，按本地地物绘制矢量专题图。若改为 `true`，浏览器卫星底图模式还依赖可访问的规划地图页面、底图授权和本机 Chrome，当前适配器使用 `/usr/bin/google-chrome`。
 3. 编辑 **`configs/config.dapu-kml.json`** 的 `llm` 和 `vlm`，填写兼容服务的 `api_base`、`model_id` 并启用 `enabled`。将凭据放入本地 `.env` 的 `ROAD_LLM_API_KEY` 和 `ROAD_VLM_API_KEY`，或设置同名环境变量。工作台的「智能审校」也使用这里的 LLM。
-4. 仍在 `RRA/RoadDescription` 下，执行以下命令。深度预检检查配置引用的资料与依赖；还应确认上述两份快照确实存在。
+4. 仍在 `RRA/RoadDescription` 下，执行以下命令。深度预检检查 GIS 图层、两份 KML 地图快照和已配置的案例章节配图。
 
 ```bash
 .venv/bin/python tools/check_setup.py --config configs/config.dapu-kml.json --deep
@@ -61,6 +63,10 @@ bash run.sh 11079
 ```
 
 在工作台分别选择北、南 KML 后提交。每份文件限一条连续的 WGS84 经纬度 LineString，最大 2 MB、10,000 个顶点。系统统一方向，检查对应端点距离不超过 1 米、两条路线有实际分歧且都在工程地图范围内。大埔案例选用 `roaddata/source/大埔候选路径/北方案.kml` 和 `南方案.kml`；在其他目录选择文件也可以。
+
+要在另一台机器复现本次大埔报告，还需随 GIS 交接 `roaddata/cases/dapu/`。其中已整理地图快照、KML 来源记录和原初设对照材料。按 roaddata 清单放置并启用章节补充资料后，可用原始 KML 重新计算。普通新项目可直接上传覆盖范围内的两条路线。若不用在线底图，设置 `use_satellite: false`，有完整地图快照即可离线完成 GIS 分析，模型仍需网络。详见[工程数据放置清单](roaddata/README.md)。
+
+要验证模型实际参与，查看任务 `output/narrative.json` 中南、北方案的 `mode` 和 `usage`，以及 `output/agents/` 下两个插件的 `result.json`。成功使用模型组织段落时记录 `llm_constrained`。文档生成成功也可能用了模板回退，实际模型、请求状态和审阅调用可查同一任务的 `output/model_calls.json`。
 
 ## 仓库目录与开发分工
 
@@ -81,7 +87,7 @@ bash run.sh 11079
 | `road_description/service.html`、`service.py` | 端口根页面、任务队列、运行状态、取消及下载。KML 上传和工作台资源路由在 `workbench_api.py`，正文读取、模型改写、版本校验与导出在 `workbench_document.py`。 |
 | `roaddata/` | 报告实际读取的本地工程资料，交接结构见下表和独立数据 README。 |
 | `templates/`、`assets/` | Word 模板 `route_description_v1.docx` 和页眉图像素材。改报告版式从这里和文档渲染代码入手。 |
-| `outputs/` | 已发布样例在 `latest/`；运行任务和历史案例各用独立子目录。生成任务切勿写入 `latest/`。 |
+| `outputs/` | 最近成稿、固定发布样例、工作台任务和历史归档的入口见[目录索引](outputs/README.md)。 |
 | `tools/` | 环境预检 `check_setup.py`、Office 准备、数据/交付审计、用量统计及前端挂载工具 `connect_workbench.py`。 |
 | `tests/` | GIS 事实、行政里程、工程导入、模型适配、章节生成及交付回归测试。 |
 | `docs/` | 开发交接、资料缺口、验证记录及发布清单。先读 [DEVELOPMENT.md](docs/DEVELOPMENT.md) 和 [REQUIRED_INPUTS.md](docs/REQUIRED_INPUTS.md)。 |
@@ -579,3 +585,22 @@ python tools/measure_report_run.py --config configs/config.local.resolved.json
 ```
 
 访问 `http://127.0.0.1:5010/workbench/#description`。若需要使用外部项目自己的 Node 静态服务，在 RoadDescription 下运行 `python tools/connect_workbench.py`，然后按外部仓库的说明启动 5173 前端和 4318 原业务后端。5173 将报告请求转发给本机 5010；征询函等原业务仍走 4318。三个报告智能体的模型凭据由报告服务从本地配置读取。
+
+### 报告里的线路与地物关系
+
+路径描述（3.3.1、3.3.2）、方案比选和合规分析共用 `road_description/terminology.py` 的术语规则。GIS 先判断地物类别和空间关系，Claude 按同一口径组织或审校文字。
+
+| 报告用词 | 证据和写法 |
+| --- | --- |
+| 跨越 | 线路越过道路、铁路、河流或电力线。河流即使以面图层表示，也写“跨越河流”。隧道段注明“平面投影”，实际档距和净空需设计资料确认。 |
+| 穿越 | 线路中心线进入保护区、生态红线等图示范围。有进出里程时列出区间。 |
+| 临近 | 线路在对象附近，从范围外侧通过时可列最近平面距离。仅触及边界时注明“仅接触边界”。 |
+| 占用 | 由实际塔基、施工用地等已确认资料判定。只有线路投影或辅助筛查带时，占用情况列为待核。 |
+
+报告禁用“交叉”。Word 导出时检查正文、图题、表格和页眉页脚，工作台编辑与模型改写也执行该限制。原始 GIS 数据和来源资料保留原文。
+
+### 启动提示与生成耗时
+
+服务启动时在终端打印 `[配置提示]`，每个任务也在自己的 `output/workflow.log` 打印所用配置。提示会列出未启用的模型、缺失的 API 地址、模型 ID、凭据变量名以及缺失的 KML 地图快照。密钥留空或用星号遮挡时，服务可启动，正文可使用模板。启用卫星图时，在 **opt_v56 进程环境**中配置 `TIANDITU_TK`；有缓存时可直接使用瓦片，在线取图失败则打印提示并使用矢量底图。
+
+公开 KML 模板将 `llm.max_concurrency` 和 `vlm.max_concurrency` 都设为 10。完整任务会审阅描述、比选、两份合规分册和合册的每一页，渲染后还需要等模型返回。日常只想先看成稿时，可在本地配置设 `quality_review.vision: false`，保留正文模型和文本审校，跳过逐页图片审阅。正式逐页验收再开启。

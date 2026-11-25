@@ -4,6 +4,7 @@ from pathlib import Path
 import pymupdf
 from .common.report import heading,prose,render_document
 from road_description.io import read_json,write_json
+from road_description.terminology import report_text
 
 
 def unified_blocks(comparison, compliance):
@@ -38,11 +39,36 @@ def unified_blocks(comparison, compliance):
     return blocks + [heading('南北方案核查结论与待办')] + conclusions
 
 
+def load_section_notes(project_root, note_file):
+    """Resolve case illustrations beside the notes; support older project-relative paths."""
+    path = project_root / note_file
+    notes = read_json(path)
+    for blocks in notes.values():
+        for block in blocks:
+            for field in ('text', 'caption'):
+                if field in block:
+                    block[field] = report_text(block[field])
+            if block['type'] == 'table':
+                block['columns'] = [report_text(v) for v in block['columns']]
+                block['rows'] = [[report_text(str(v)) for v in row] for row in block['rows']]
+            images = [block] if block['type'] == 'figure' else block.get('images', [])
+            for image in images:
+                image_path = path.parent / image['path']
+                if not image_path.is_file():
+                    image_path = project_root / image['path']
+                if not image_path.is_file():
+                    raise FileNotFoundError(f'缺少章节配图 {image["path"]}')
+                image['path'] = str(image_path.resolve())
+                if 'title' in image:
+                    image['title'] = report_text(image['title'])
+    return notes
+
+
 def assemble_all(ctx, comparison, compliance):
     blocks = unified_blocks(comparison, compliance)
     note_file = ctx.options.get('assembly', {}).get('section_notes')
     if note_file:
-        notes = read_json(ctx.root / note_file)
+        notes = load_section_notes(ctx.root, note_file)
         expanded = []
         for block in blocks:
             expanded.append(block)

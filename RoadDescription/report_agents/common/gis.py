@@ -11,13 +11,14 @@ from shapely.ops import unary_union, nearest_points
 
 from road_description.facts import intersection_events, line_parts, clean, tunnel_mark
 from road_description.io import file_hash
+from road_description.terminology import crossing_feature
 
 
 def is_ecology(feature):
     return any(s in feature['category'] for s in ('水源', '自然保护', '生态', '公园', '湿地', '风景'))
 
 def is_crossing(feature):
-    return any(s in feature['category'] for s in ('公路', '道路', '国道', '省道', '县道', '乡道', '铁路', '输电', '河流'))
+    return crossing_feature(feature['category'])
 
 
 def bearing_xy(line, station, window=5):
@@ -100,7 +101,7 @@ def crossings(route, catalog, include_contacts=False):
                 'source_uids': sorted({x['uid'] for x in features}), 'start_m': lo, 'end_m': hi,
                 'intersection_length_m': hi-lo, 'relation': relation, 'angle_deg': angle,
                 'minimum_angle_deg': threshold, 'angle_status': state,
-                'angle_method': '原始线状地物与路径交点两侧各5m切向的平面锐角；面状水域不推算交叉角',
+                'angle_method': '原始线状地物与路径交点两侧各5m切向的平面锐角；面状水域不推算跨越角',
                 'xy': list(point.coords[0]), 'tunnel': [x['tunnel'] for x in local if x['tunnel']], 'tunnel_status':tunnel_status})
     records.sort(key=lambda x: x['start_m'])
     return records
@@ -176,7 +177,7 @@ def ecology_relations(route, catalog, radius, towers=None, tower_complete=False)
         events = intersection_events(route, f['geometry'])
         length = sum(hi-lo for lo,hi,kind in events if kind=='traverse')
         distance = route.distance(f['geometry'])
-        relation = '穿越图示范围' if length > .05 else '边界接触' if distance < .01 else '范围外侧'
+        relation = '穿越图示范围' if length > .05 else '临近（仅接触边界）' if distance < .01 else '临近（范围外侧）'
         rule = catalog.rule(f)
         intervals=[{'start_m':lo,'end_m':hi} for lo,hi,kind in events if kind=='traverse']
         station=(intervals[0]['start_m']+intervals[0]['end_m'])/2 if intervals else route.project(nearest_points(route,f['geometry'])[0])
@@ -250,7 +251,7 @@ def scheme_measurements(ctx, facts):
     radius = float(ctx.options.get('ecology_nearby_m', 300))
     width = float(ctx.options.get('building_screen_width_m', 60))
     if radius < 0 or width <= 0:
-        raise ValueError('生态邻近范围不能为负，建筑筛查宽度必须为正')
+        raise ValueError('生态临近范围不能为负，建筑筛查宽度必须为正')
     events = crossings(route, ctx.catalog, include_contacts=True)
     result = {'crossings': [e for e in events if e['relation'] in ('cross','traverse')],
               'contacts': [e for e in events if e['relation'] in ('contact','overlap')],

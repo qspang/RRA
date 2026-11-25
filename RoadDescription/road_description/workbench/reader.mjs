@@ -13,7 +13,7 @@ export async function reader(host,jid,agent){
     return '<a class="plate-image" target="_blank" rel="noopener" href="'+src+'" title="查看原图"><img loading="lazy" alt="'+esc(label||'报告图件')+'" src="'+src+'"></a>';
   }
   function editLink(b){
-    return b?.id?'<button class="margin-edit" data-edit="'+esc(b.id)+'">编辑此段</button>':'';
+    return kind!=='assembly'&&b?.id?'<button class="margin-edit" data-edit="'+esc(b.id)+'">编辑此段</button>':'';
   }
   function grid(title,headers,rows,source){
     const cells=(row)=>row.map((value,i)=>'<td class="'+(/^(K?\d+(\.\d+)?)(～K?\d+(\.\d+)?)?$/.test(value)?'measure':'')+'">'+esc(value).replace(/；(?=\S)/g,'；<wbr>')+'</td>').join('');
@@ -82,7 +82,7 @@ export async function reader(host,jid,agent){
     const current=sections[section];
     host.innerHTML='<div class="rd-reader"><aside><h3>章节目录</h3>'+ (agent==='compliance'?'<div class="scheme-tabs">'+['upper','lower'].map((k,i)=>'<button data-kind="'+k+'" aria-pressed="'+(kind===k)+'">'+(i?'南方案':'北方案')+'</button>').join('')+'</div>':'')+
       sections.map((s,i)=>'<button class="toc-entry" aria-current="'+(section===i)+'" data-sec="'+i+'">'+esc(s.title)+'</button>').join('')+
-      '</aside><article class="rd-paper"><div class="paper-top"><span>报告正文</span><span>'+ (doc.version?'审校版 · 第 '+doc.version+' 版':'生成稿')+'</span>'+ (doc.version?'<a href="'+base()+'docx">审校 Word ↓</a><a href="'+base()+'pdf">审校 PDF ↓</a>':'')+ (current.blocks.some(b=>b.type==='paragraph')?'<button class="edit-open" data-start>智能审校</button>':'')+'</div><h2>'+esc(current.title)+'</h2>'+layout(current.blocks)+
+      '</aside><article class="rd-paper"><div class="paper-top"><span>报告正文</span><span>'+ (doc.version?'审校版 · 第 '+doc.version+' 版':'生成稿')+'</span>'+ (doc.version?'<a href="'+base()+'docx">审校 Word ↓</a><a href="'+base()+'pdf">审校 PDF ↓</a>':'')+ (kind!=='assembly'&&current.blocks.some(b=>b.type==='paragraph')?'<button class="edit-open" data-start>智能审校</button>':'')+'</div><h2>'+esc(current.title)+'</h2>'+layout(current.blocks)+
       '<nav class="chapter-nav" aria-label="章节翻页">'+
       (section>0?'<button class="prev-section" data-sec="'+(section-1)+'"><small>← 上一节</small><b>'+esc(sections[section-1].title)+'</b></button>':'')+
       (section+1<sections.length?'<button class="next-section" data-sec="'+(section+1)+'"><small>下一节 →</small><b>'+esc(sections[section+1].title)+'</b></button>':'')+'</nav>'+

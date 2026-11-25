@@ -80,7 +80,7 @@ class RouteComparisonAgent:
         crossing_counts = {}
         for f in facts:
             crossing_counts[f['id']] = dict(Counter(x['category'] for x in measured[f['id']]['crossings'] if not compact or major_event(x)))
-        add('重要交叉跨越', ['；'.join(f'{k}：{v}次' for k,v in crossing_counts[f['id']].items()) or '现有图层未检出' for f in facts], '按原始地物几何事件统计；重复跨越分开计，同名碎片合并；不直接数费用条目')
+        add('重要跨越', ['；'.join(f'{k}：{v}次' for k,v in crossing_counts[f['id']].items()) or '现有图层未检出' for f in facts], '按原始地物几何事件统计；重复跨越分开计，同名碎片合并；不直接数费用条目')
         add('房屋拆迁面积/数量', [quantities(demolition[f['id']]) for f in facts], '只采用有来源且人工确认的调查；未调查不填0')
         add('建筑图斑筛查（辅助）', [f"{measured[f['id']]['building_screen']['feature_count']}个要素；相交面积{measured[f['id']]['building_screen']['polygon_overlap_m2']:.1f}m²" for f in facts], f"{ctx.options.get('building_screen_width_m',60):g}m总宽筛查带，不等于拆迁范围")
         add('穿越生态敏感区', ['；'.join(dict.fromkeys(x['label'] for x in measured[f['id']]['ecology'] if x['inside_length_m'] > .05)) or '现有图层未检出穿越' for f in facts], '原始敏感区边界相交；无交集不等于专题调查已完成')
@@ -116,7 +116,7 @@ class RouteComparisonAgent:
             observations.append('两方案成本口径资料不足或不一致，当前不按成本作优劣排序。')
         for f in facts:
             m = measured[f['id']]
-            observations.append(f"{f['name']}在现有图层中识别主要交叉跨越{sum(not compact or major_event(e) for e in m['crossings'])}个几何事件，穿越生态保护红线图示范围约{m['ecological_redline_length_m']/1000:.3f}km；数量仅限已提供的数据。")
+            observations.append(f"{f['name']}在现有图层中识别主要跨越{sum(not compact or major_event(e) for e in m['crossings'])}个几何事件，穿越生态保护红线图示范围约{m['ecological_redline_length_m']/1000:.3f}km；数量仅限已提供的数据。")
         conflicts = [f['id'] for f in facts if any(v['status']=='conflict' for v in measured[f['id']]['rule_checks'].values()) or any(c['angle_status']=='conflict' for c in measured[f['id']]['crossings']) or letters[f['id']]['status']=='rejected']
         conflicts=sorted(set(conflicts+[f['id'] for f in facts if any(e['geometry_status']=='conflict' for e in measured[f['id']]['ecology'])]))
         decision = recommendation(ctx, conflicts)
@@ -151,7 +151,7 @@ class RouteComparisonAgent:
                 '；'.join(f['name']+'：'+scope_text(item,f['id']) for f in facts)+'。'))
         blocks.append(prose('本册按北方案.kml、南方案.kml提供的候选线位量算，按起点至终点方向计里程。正式推荐方案待专业审查。' if ctx.config.get('route_source')=='kml' else '本次为通过不同必经控制点生成的两条测试路线，不是已审定的正式南北大方案。图层距离和范围均对应这组测试路线。'))
         if ctx.catalog.provenance.get('supplemental_layers'):
-            blocks.append(prose('报告同时读取补充道路及完整原始生态GDB。生态范围采用未裁剪原图层，避免遗漏规划裁剪框以外的邻近对象；补充道路等级与通行条件待核。上述补充仅用于报告核查，未改变归档规划的规则、成本或可行性结果。'))
+            blocks.append(prose('报告同时读取补充道路及完整原始生态GDB。生态范围采用未裁剪原图层，避免遗漏规划裁剪框以外的临近对象；补充道路等级与通行条件待核。上述补充仅用于报告核查，未改变归档规划的规则、成本或可行性结果。'))
         from road_description.io import write_json
         write_json(out/'图层覆盖与距离.json',coverage)
         if compact:
@@ -175,7 +175,12 @@ class RouteComparisonAgent:
         blocks.append({'type':'figure', 'path': figures[0]['path'], 'caption':'图3.3-1 南、北方案路径示意图'})
         descriptions = {}
         description_config = dict(ctx.config, llm=ctx.options.get('route_comparison', {}).get('llm', ctx.config.get('llm', {})))
-        drafts=parallel_map(lambda f:compose(f,description_config),facts,description_config.get('llm',{}).get('max_concurrency',15))
+        prior = ctx.cache.get('description_narratives', {})
+        if prior and 'llm' not in ctx.options.get('route_comparison', {}):
+            drafts = [prior[f['id']] for f in facts]
+        else:
+            drafts = parallel_map(lambda f: compose(f, description_config), facts,
+                                  description_config.get('llm', {}).get('max_concurrency', 15))
         for i, (f,value) in enumerate(zip(facts,drafts)):
             descriptions[f['id']] = value
             blocks.append(heading(f"3.3.{i+1} {f['name']}路径"))

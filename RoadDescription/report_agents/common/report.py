@@ -110,6 +110,8 @@ def render_document(ctx, destination, blocks, title, page_start=17):
             doc.add_page_break()
         else:
             raise ValueError('未知报告块类型：'+str(block['type']))
+    from road_description.terminology import check_document
+    check_document(doc)
     doc.save(destination)
     try:
         preview = render_pdf(destination, ctx.config.get('soffice', ''))

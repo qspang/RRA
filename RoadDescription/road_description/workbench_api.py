@@ -1,6 +1,7 @@
 """Import two supplied engineering routes into an isolated report job."""
 import copy
 from functools import lru_cache
+from datetime import datetime
 from pathlib import Path
 import shutil
 import uuid
@@ -13,13 +14,7 @@ from .facts import canonical_path, pair_schemes
 from .io import file_hash, read_json, write_json
 from .planner import report_scheme
 
-GROUPS = {
-    'description': ('route_description', ['路径方案描述_联调样章']),
-    'comparison': ('route_comparison', ['agents/route_comparison/路径方案比选']),
-    'compliance': ('route_compliance', ['agents/route_compliance/upper/北方案_路径合规性分析',
-                                       'agents/route_compliance/lower/南方案_路径合规性分析']),
-    'assembly': ('assembly', ['agents/assembly/完整报告_路径描述_方案比选_南北方案合规分析']),
-}
+from .report_files import GROUPS
 
 
 def submit_pair(manager):
@@ -83,7 +78,7 @@ def submit_pair(manager):
         if (seed/'tiles').is_dir():
             shutil.copytree(seed/'tiles',out/'tiles')
         write_json(folder/'config.json',config)
-        write_json(folder/'job.json',dict(id=jid,status='queued',source='kml',title=config['project_title'],
+        write_json(folder/'job.json',dict(id=jid,status='queued',source='kml',created_at=datetime.now().astimezone().isoformat(timespec='seconds'), title=config['project_title'],
             routes=[dict(id=r['id'],km=LineString(r['path']).length/1000) for r in routes]))
         manager.pool.submit(manager.run,jid)
     except Exception:
@@ -99,7 +94,7 @@ def result_preview(path, modified_ns, kind):
         return [[name, data[sid]['paragraphs'][0]['text'].split('。')[0]+'。']
                 for sid,name in [('upper','北方案'),('lower','南方案')] if data.get(sid,{}).get('paragraphs')]
     if kind == 'comparison':
-        fields = {'线路长度/km','海拔分布','穿越生态保护红线/km','重要交叉跨越'}
+        fields = {'线路长度/km','海拔分布','穿越生态保护红线/km','重要跨越','重要交叉跨越'}
         return [row[:3] for row in data['matrix']['rows'] if row[0] in fields]
     if kind == 'compliance':
         return [[s['name'], '存在需复核冲突' if s['status']=='conflict_requires_review' else '资料待核',
@@ -137,8 +132,22 @@ def register(app, manager):
 
     @app.get('/api/kml-jobs/recent')
     def recent():
-        records = sorted(manager.root.glob('*/job.json'), key=lambda p:p.parent.stat().st_ctime_ns, reverse=True)
-        return jsonify(ids=[p.parent.name for p in records if read_json(p).get('source')=='kml'][:30])
+        jobs = []
+        for path in manager.root.glob('*/job.json'):
+            job = read_json(path)
+            if job.get('source') != 'kml':
+                continue
+            created = job.get('created_at')
+            if not created:
+                progress = path.parent/'output/report_job.json'
+                started = read_json(progress).get('started_at') if progress.is_file() else None
+                stamp = datetime.fromisoformat(started) if started else datetime.fromtimestamp(path.stat().st_mtime)
+                created = stamp.astimezone().isoformat(timespec='seconds')
+            jobs.append(dict(id=job['id'], title=job.get('title'), status=job['status'], created_at=created,
+                             has_report=(path.parent/'output/agents/assembly/result.json').is_file()))
+        jobs.sort(key=lambda job: datetime.fromisoformat(job['created_at']).timestamp(), reverse=True)
+        jobs = jobs[:30]
+        return jsonify(ids=[job['id'] for job in jobs], jobs=jobs)
 
     @app.get('/api/kml-jobs/<jid>/map')
     def overview(jid):
@@ -177,4 +186,10 @@ def register(app, manager):
             path=out/name
             if path.is_file():
                 previews[kind]=result_preview(path,path.stat().st_mtime_ns,kind)
-        return jsonify(**job,summary=previews.pop('summary',[]),previews=previews,has_map=(out/'figure_manifest.json').is_file(),stage=data.get('stage'),error=data.get('error'),active=read_json(active).get('active') if active.exists() else None,groups=groups)
+        review_path = out/'quality_review.json'
+        review = None
+        if review_path.is_file():
+            result = read_json(review_path)
+            review = dict(status=result['status'], failed=len(result.get('failed_reviews', [])),
+                          blocking=len(result.get('blocking_reviews', [])))
+        return jsonify(**job,review=review,summary=previews.pop('summary',[]),previews=previews,has_map=(out/'figure_manifest.json').is_file(),stage=data.get('stage'),error=data.get('error'),active=read_json(active).get('active') if active.exists() else None,groups=groups)

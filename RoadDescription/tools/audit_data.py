@@ -34,7 +34,7 @@ for category in ['自然保护区缓冲区','一级水源保护区','生态保�
     feature=next((f for f in catalog.features if f['category']==category),None)
     if feature:
         rule=catalog.rule(feature)
-        lines.append(f"{category}：禁止通行={rule['cross_forbidden']}；禁立塔/保护带禁立塔={rule['tower_forbidden']}；跨越基础费={rule['cross_cost']}万元；最小交叉角={rule['min_cross_angle']}度。")
+        lines.append(f"{category}：禁止通行={rule['cross_forbidden']}；禁立塔/保护带禁立塔={rule['tower_forbidden']}；跨越基础费={rule['cross_cost']}万元；最小跨越角={rule['min_cross_angle']}度。")
 lines+=['','五、目前的实际边界',
        '相交地物的属地区县/村名可以提取，已用于报告；但尚无完整行政界线时，不宣称覆盖全线路，也不编造全线经过县区总数。',
        '河流原始SHP中未提供正式河名字段；水源地部分Name为空，descriptio字段已在原始SHP中截断。可以接受后续src_uid名称覆盖表补齐。',

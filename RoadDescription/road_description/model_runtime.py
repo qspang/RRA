@@ -30,17 +30,27 @@ def prepare_model_config(config, root):
     return config
 
 
+def _configured_key(value):
+    value = value.strip()
+    placeholder = value.casefold()
+    if ('*' in value or placeholder.startswith(('<', '${', 'your-', 'your_', 'sk-xxx'))
+            or placeholder in ('redacted', '[redacted]', 'changeme', '请填写', 'xxx', '...')):
+        return ''
+    return value
+
+
 def credential(config):
     name = config.get('api_key_env', 'ROAD_LLM_API_KEY')
-    if os.getenv(name):
-        return os.environ[name]
+    value = _configured_key(os.environ.get(name, ''))
+    if value:
+        return value
     path = config.get('credential_file')
     if path:
         # Keep the key local to the request, without changing other providers' env.
         for line in Path(path).read_text(encoding='utf-8').splitlines():
             key, sep, value = line.partition('=')
             if sep and key.strip() == name:
-                return value.strip().strip('"\'')
+                return _configured_key(value.strip().strip('"\''))
     return ''
 
 
@@ -76,6 +86,12 @@ def parallel_map(function, values, workers=15):
 
 
 def model_call(config, messages):
+    from .terminology import RELATION_RULE
+    messages = list(messages)
+    if messages and messages[0].get('role') == 'system':
+        messages[0] = dict(messages[0],content=messages[0]['content']+'\n'+RELATION_RULE)
+    else:
+        messages.insert(0,dict(role='system',content=RELATION_RULE))
     global _active, _peak
     if not config.get('enabled'):
         raise ValueError('模型未启用')
@@ -109,6 +125,7 @@ def model_call(config, messages):
                     response = requests.post(endpoint, headers={'Authorization':'Bearer '+key},
                                              json=payload, timeout=config.get('timeout_s',180))
                 except requests.RequestException as exc:
+                    event['transport_error'] = type(exc).__name__
                     if attempt+1 < max_attempts:
                         time.sleep(min(8, 2**attempt)); continue
                     raise RuntimeError('模型传输失败：'+type(exc).__name__) from None
@@ -149,6 +166,16 @@ def model_call(config, messages):
             raise RuntimeError('模型重试未完成')
         except Exception as exc:
             event['error_type'] = type(exc).__name__
+            status = event.get('http_status')
+            if status in (401, 403):
+                hint = f'HTTP {status}，请检查模型密钥、模型授权及 API 地址'
+            elif status == 429:
+                hint = 'HTTP 429，服务限流，请检查配额或调低并发'
+            elif event.get('transport_error'):
+                hint = '传输异常 ' + event['transport_error']
+            else:
+                hint = f"HTTP {status or '未知'}，{type(exc).__name__}"
+            print(f"[模型提示] {event['purpose']} 请求失败（{hint}，已尝试 {event['attempts']} 次）。", flush=True)
             raise
         finally:
             event['elapsed_s'] = round(time.monotonic()-started, 3)

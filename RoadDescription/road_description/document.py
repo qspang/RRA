@@ -123,6 +123,8 @@ def render_docx(config,facts,narratives,figures,out,template):
             paragraph(doc,p['text'])
         images=[by_id[identifier] for identifier in scheme['figure_ids']]
         if images:figure_grid(doc,images,f"图 {config.get('section_number','3.3')}-{i+2}  {scheme['name']}沿线情况（地图示意及已确认素材）" if any(im['kind']=='approved_photo' for im in images) else f"图 {config.get('section_number','3.3')}-{i+2}  {scheme['name']}沿线情况（地图示意）")
+    from .terminology import check_document
+    check_document(doc)
     out=Path(out);doc.save(out)
     return str(out)
 

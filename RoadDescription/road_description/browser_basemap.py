@@ -11,11 +11,17 @@ def tile(planner_url, zoom, x, y, annotations=False):
     if planner_url not in _clients:
         from playwright.sync_api import sync_playwright
         driver=sync_playwright().start()
-        browser=driver.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,
-                                      args=['--no-sandbox','--disable-dev-shm-usage'])
-        page=browser.new_page()
-        page.goto(planner_url,wait_until='domcontentloaded',timeout=30000)
-        page.wait_for_function('typeof geoMeta!=="undefined" && geoMeta && geoMeta.tianditu_tk',timeout=60000)
+        try:
+            browser = driver.chromium.launch(executable_path='/usr/bin/google-chrome', headless=True,
+                                             args=['--no-sandbox', '--disable-dev-shm-usage'])
+            page = browser.new_page()
+            page.goto(planner_url, wait_until='domcontentloaded', timeout=30000)
+            page.wait_for_function('typeof geoMeta!=="undefined" && geoMeta && "tianditu_tk" in geoMeta', timeout=15000)
+            if not page.evaluate('Boolean(geoMeta.tianditu_tk)'):
+                raise ValueError('规划服务未配置 TIANDITU_TK')
+        except Exception:
+            driver.stop()
+            raise
         _clients[planner_url]=(driver,browser,page)
     page=_clients[planner_url][2]
     # The URL and key stay inside the actual browser origin; no credential in logs.

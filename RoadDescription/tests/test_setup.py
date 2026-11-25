@@ -49,3 +49,35 @@ def test_configs_directory_root_survives_service_job_relocation(tmp_path):
     legacy = tmp_path/'legacy.json'
     write_json(legacy,{})
     assert config_root(legacy)==tmp_path
+
+
+def test_case_illustration_moves_with_notes(tmp_path):
+    from report_agents.assembly import load_section_notes
+    folder = tmp_path/'roaddata/cases/dapu'
+    folder.mkdir(parents=True)
+    image = folder/'example.png'
+    image.touch()
+    write_json(folder/'notes.json', {'3.3.1': [
+        {'type': 'figure', 'caption': '重要交叉跨越', 'path': image.name},
+    ]})
+    block = load_section_notes(tmp_path, 'roaddata/cases/dapu/notes.json')['3.3.1'][0]
+    assert block == {'type': 'figure', 'caption': '重要跨越', 'path': str(image)}
+
+
+def test_startup_notices_warn_about_masked_credentials_without_exposing_values(tmp_path, monkeypatch):
+    from road_description.model_runtime import credential
+    from road_description.startup import startup_notices
+    monkeypatch.delenv('TEST_RD_KEY', raising=False)
+    settings = dict(enabled=True, api_base='https://private.test', model_id='test',
+                    api_key_env='TEST_RD_KEY', credential_file='.env')
+    local = tmp_path/'.env'
+    local.write_text('TEST_RD_KEY=sk-********\n')
+    config = dict(llm=settings, use_satellite=True, route_source='kml', output_dir='seed')
+    text = '\n'.join(startup_notices(config, tmp_path))
+    assert all(word in text for word in ('TEST_RD_KEY', 'TIANDITU_TK', 'map.raw.json.gz'))
+    assert 'sk-' not in text and 'private.test' not in text
+    local.write_text('TEST_RD_KEY=test-value-for-this-case\n')
+    monkeypatch.setenv('TEST_RD_KEY', '[REDACTED]')
+    assert credential(dict(settings, credential_file=str(local))) == 'test-value-for-this-case'
+    text = '\n'.join(startup_notices(config, tmp_path))
+    assert 'llm 已配置' in text and 'test-value-for-this-case' not in text

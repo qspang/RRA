@@ -194,3 +194,25 @@ def test_agents_load_independently_and_do_not_require_each_other():
         assert create_agent(identifier).manifest['depends_on']==[]
     with pytest.raises(ValueError):register_agent('route_comparison','other:Agent')
     with pytest.raises(ValueError):create_agent('missing')
+
+
+def test_relation_depends_on_feature_as_well_as_geometry():
+    from road_description.narrative import candidates
+    route = LineString([(0, 0), (20, 0)])
+    features = [
+        feature('river', route.buffer(1), '甲河', '通航河流'),
+        feature('reserve', route.buffer(2), '乙区', '河流保护范围'),
+    ]
+    assert [event['label'] for event in crossings(route, catalog(features))] == ['甲河']
+    events = [
+        dict(fact_id=f['uid'], relation='traverse', category=f['category'], label=f['label'],
+             start_m=0, end_m=20) for f in features
+    ]
+    events.append(dict(fact_id='touch', relation='contact', category='公路', label='丙路',
+                       start_m=20, end_m=20))
+    segment = dict(direction='东', length_m=20, fact_id='s', event_ids=[e['fact_id'] for e in events])
+    facts = dict(id='n', name='北方案', events=events, segments=[segment], counties=[], constraints=[],
+                 metrics=dict(length_m=20, straight_distance_m=20, tortuosity=1))
+    text = candidates(facts, dict(start_name='起点', end_name='终点'))[0]['text']
+    assert '跨越甲河' in text and '穿越乙区' in text and '临近丙路' in text
+    assert '占用' not in text and '交叉' not in text

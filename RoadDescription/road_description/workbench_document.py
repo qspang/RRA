@@ -15,6 +15,7 @@ from flask import abort, jsonify, request, send_file
 from .document import render_pdf
 from .io import file_hash, read_json, write_json
 from .model_runtime import model_call
+from .terminology import check_document
 
 
 def content(doc):
@@ -41,10 +42,12 @@ def content(doc):
 def register_documents(app, manager, groups):
     paths = {name: groups[key][1][i]+'.docx' for name,key,i in [
         ('description','description',0),('comparison','comparison',0),
-        ('upper','compliance',0),('lower','compliance',1)]}
+        ('upper','compliance',0),('lower','compliance',1),('assembly','assembly',0)]}
 
     @app.route('/api/kml-jobs/<jid>/document/<kind>/<action>',methods=['GET','POST'])
     def document(jid,kind,action):
+        if kind == 'assembly' and (request.method != 'GET' or action not in ('read', 'image')):
+            abort(405)
         folder = manager.folder(jid)
         if kind not in paths or read_json(folder/'job.json').get('source')!='kml':
             abort(404)
@@ -80,6 +83,7 @@ def register_documents(app, manager, groups):
                 else:p.add_run(text)
             with tempfile.TemporaryDirectory() as tmp:
                 output=Path(tmp)/('审校版_'+path.name)
+                check_document(doc)
                 doc.save(output)
                 if action=='pdf':
                     if render_pdf(output,manager.base.get('soffice',''))['status']!='completed':
@@ -94,6 +98,7 @@ def register_documents(app, manager, groups):
         if not isinstance(idx,str) or idx not in valid:raise ValueError('请选择正文段落')
         text=body.get('text')
         if not isinstance(text,str) or not 0<len(text.strip())<=16000:raise ValueError('正文应为1至16000字符')
+        if action=='save' and '交叉' in text:raise ValueError('请按实际关系使用跨越、穿越、临近或占用')
         with manager.lock:
             draft=state()
             if body.get('source')!=signature or body.get('version')!=draft['version']:
@@ -112,6 +117,6 @@ def register_documents(app, manager, groups):
         except (ValueError,RuntimeError,OSError):
             return jsonify(error='模型接口未返回有效建议，当前草稿已保留，可重试。'),502
         proposal=result.get('text')
-        if not isinstance(proposal,str) or not 0<len(proposal.strip())<=16000:
+        if not isinstance(proposal,str) or not 0<len(proposal.strip())<=16000 or '交叉' in proposal:
             return jsonify(error='模型建议格式无效，请重试。'),502
         return jsonify(text=proposal)

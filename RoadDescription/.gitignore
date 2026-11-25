@@ -35,6 +35,7 @@ __pycache__/
 /*.zip
 # Exactly one curated output, with an explicit file allowlist
 /outputs/*
+!/outputs/README.md
 !/outputs/latest/
 /outputs/latest/*
 !/outputs/latest/README.md

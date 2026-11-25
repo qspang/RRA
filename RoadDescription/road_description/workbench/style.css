@@ -86,3 +86,10 @@
 .chapter-nav .next-section{margin-left:auto;text-align:right}.chapter-nav small{font-size:13px;color:#4b6d5d}.chapter-nav b{font-size:16px}
 .chapter-nav button:hover,.chapter-nav button:focus-visible{background:#eaf3ed;border-color:#518064}
 @media(max-width:680px){.rd-paper .plate-single,.rd-paper .plate-grid figure{grid-template-columns:44% 1fr}.rd-report .rd-reader aside{padding:12px}.chapter-nav button{padding:8px}.chapter-nav b{font-size:15px}}
+.rd-report header select{max-width: min(100%, 32rem);min-width:0;text-overflow:ellipsis}
+.rd-delivery{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#edf4ef;border:1px solid #bfd2c4;border-left:4px solid #377050;border-radius:8px;padding:15px 20px;margin-top:14px}
+.rd-delivery h2{margin:0;font-size:20px;color:#1c402d}.rd-delivery p{margin:4px 0 0;color:#415b4a;font-size:14px}
+.rd-delivery-links{display:flex;flex-wrap:wrap;gap:8px}.rd-delivery-links a{background:white;color:#214e35;border:1px solid #8da995;border-radius:6px;padding:9px 15px;text-decoration:none;font-weight:600}
+.rd-delivery-links a:first-child{background:#27563c;color:white}.rd-delivery-links a:hover{box-shadow:0 0 0 2px #aac5b1}
+.rd-book{margin:8px 0 14px}.rd-book>summary{cursor:pointer;padding:9px 4px;color:#27563c;font-weight:600}
+@media(max-width:680px){.rd-report header{flex-wrap:wrap}.rd-report header select{width:100%}.rd-delivery{padding:13px}}

@@ -121,6 +121,13 @@ class JobManager:
                          'completed' if code==0 and progress.get('stage')=='completed' else 'review_required' if code==2 else 'failed')
             write_json(folder/'job.json',state)
 
+        if state.get('source') == 'kml' and state['status'] in ('completed', 'review_required') and self.root.name == 'workbench_jobs':
+            from .report_files import publish_workbench_files
+            try:
+                publish_workbench_files(folder)
+            except OSError as exc:
+                print(f'[成稿目录] 创建快捷入口失败：{exc}', flush=True)
+
     def cancel(self,jid):
         with self.lock:
             folder=self.folder(jid);state=read_json(folder/'job.json')
@@ -140,6 +147,8 @@ class JobManager:
 
 def create_app(config_path,job_root):
     app=Flask(__name__);app.config['MAX_CONTENT_LENGTH']=5*1024*1024
+    from .startup import print_startup_notices
+    print_startup_notices(read_json(config_path), config_root(config_path))
     manager=JobManager(config_path,job_root);app.extensions['reports']=manager
     from .workbench_api import register
     register(app, manager)
@@ -155,7 +164,10 @@ def create_app(config_path,job_root):
     @app.errorhandler(FileNotFoundError)
     def missing(exc):return jsonify(error='任务或文件不存在'),404
     @app.get('/api/health')
-    def health():return jsonify(status='ok',job_workers=1,model_concurrency=15)
+    def health():
+        return jsonify(status='ok', job_workers=1, model_concurrency=15,
+                       llm_concurrency=manager.base.get('llm', {}).get('max_concurrency', 15),
+                       vlm_concurrency=manager.base.get('vlm', {}).get('max_concurrency', 15))
     @app.post('/api/reports')
     def submit():
         jid=manager.submit(request.get_json(silent=True));return jsonify(id=jid,status='queued'),202

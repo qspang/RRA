@@ -11,11 +11,13 @@ from .document import extract_logo,create_template,render_docx,render_pdf,inspec
 from .model_runtime import prepare_model_config,parallel_map,telemetry
 from .materials import approved_materials
 from .runlog import RunLog
+from .startup import print_startup_notices
 
 
 def run(config_path,plan=False,description_only=False):
     config_path=Path(config_path).resolve();root=config_root(config_path)
     config=read_json(config_path)
+    print_startup_notices(config, root, planning=plan)
     if config.get('route_generation',{}).get('enabled') and (plan or not config.get('schemes')):
         from .automatic_routes import generate_two_routes
         resolved=generate_two_routes(config_path,force=plan)
@@ -50,6 +52,8 @@ def run(config_path,plan=False,description_only=False):
                 key=live['geo_meta'].get('tianditu_tk','')
             except Exception:
                 state['basemap_warning']='在线底图不可用，采用矢量地图'
+        if config.get('use_satellite') and not key:
+            print('[配置提示] 未取得天地图密钥，请核对规划服务的 TIANDITU_TK；本次使用 GIS 矢量底图。',flush=True)
         responses={}
         for item in config['schemes']:
             target=out/item['id']

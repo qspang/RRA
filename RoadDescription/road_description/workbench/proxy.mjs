@@ -1,7 +1,7 @@
 import http from 'node:http';
 export function reportProxy(req,res){
   const path=req.url.split('?')[0];
-  const documentRoute=/^\/api\/kml-jobs\/[a-f0-9]{32}\/document\/(?:description|comparison|upper|lower)\/(read|image|docx|pdf|save|suggest)$/.exec(path);
+  const documentRoute=/^\/api\/kml-jobs\/[a-f0-9]{32}\/document\/(?:description|comparison|upper|lower|assembly)\/(read|image|docx|pdf|save|suggest)$/.exec(path);
   const read = (documentRoute && ['read','image','docx','pdf'].includes(documentRoute[1])) || path==='/api/kml-jobs/recent' || /^\/api\/kml-jobs\/[a-f0-9]{32}\/map$/.test(path) || /^\/report-ui\/(reader\.mjs|routes\.mjs|style\.css)$/.test(path) ||
     /^\/api\/kml-jobs\/[a-f0-9]{32}$/.test(path) ||
     /^\/api\/reports\/[a-f0-9]{32}\/files\/.+\.(pdf|docx)$/.test(path);

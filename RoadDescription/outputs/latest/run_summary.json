@@ -21,11 +21,20 @@
     },
     {
       "file": "大埔南北候选路径综合分析.docx",
-      "sha256": "28a08542e82e0a65b064c6d3888cb2d2e2e972c37cd7e3b849129c87b837dd74"
+      "sha256": "3636458243faf2f25faf72c9604dde3a840187440340d24c58eda08105f19bf9"
     },
     {
       "file": "大埔南北候选路径综合分析.pdf",
-      "sha256": "df0a7765fba47ae0ecd7c322452f710468c00070cd6b207d3f0a15b07c440506"
+      "sha256": "8627da9dfdceee23a93cd3335a038797be597c004b936a31eba3b8920bde1b0e"
     }
-  ]
+  ],
+  "generated_on": "2026-11-25",
+  "basemap": "vector",
+  "model_id": "claude-sonnet-4-6",
+  "review": {
+    "status": "needs_review",
+    "checks": 106,
+    "failed": 45,
+    "blocking": 1
+  }
 }

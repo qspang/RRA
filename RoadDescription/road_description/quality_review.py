@@ -121,7 +121,7 @@ def review_reports(config, out, retry_ids=None):
                          for s in facts['schemes']]}
     if config.get('report_style')=='reference':
         for item in evidence['schemes']:item.pop('terrain',None)
-        evidence['presentation']={'style':'reference','scope':'正文按参考报告介绍主要道路、电力线、铁路、河流和生态范围；普通乡道、小路、技术明细留在JSON/CSV，正文无需逐项复述。crossings中presentation_included=false的事件不计入正文主要跨越数；同图幅可涵盖多个邻近事件，不代表同一工程跨越档。未在正文重复辅助指标或每个事件不是事实错误。'}
+        evidence['presentation']={'style':'reference','scope':'正文按参考报告介绍主要道路、电力线、铁路、河流和生态范围；普通乡道、小路、技术明细留在JSON/CSV，正文无需逐项复述。crossings中presentation_included=false的事件不计入正文主要跨越数；同图幅可涵盖多个临近事件，不代表同一工程跨越档。未在正文重复辅助指标或每个事件不是事实错误。'}
     if comparisons.exists():
         result=read_json(comparisons)
         evidence['comparison']={'matrix':result['matrix'],'recommendation':result['recommendation'],'specialists':result.get('specialists',{}),'coverage':result.get('coverage',[])}
@@ -160,6 +160,8 @@ def review_reports(config, out, retry_ids=None):
         checks.append({'check':document['id']+'_sections_and_fonts','passed':section_ok and '宋体' in xml and 'Times New Roman' in xml})
         pdf_path=path.with_suffix('.pdf');pdf=pymupdf.open(pdf_path)
         actual_text='\n'.join(page.get_text() for page in pdf)
+        checks.append({'check': document['id']+'_pdf_relation_terms',
+                       'passed': '交叉' not in ''.join(actual_text.split())})
         record={'id':document['id'],'docx':str(path),'pdf':str(pdf_path),'pages':len(pdf),
                 'docx_sha256':file_hash(path),'pdf_sha256':file_hash(pdf_path),'tables':len(doc.tables)}
         documents.append(record)
@@ -207,6 +209,7 @@ def review_reports(config, out, retry_ids=None):
         write_json(folder/(job['id']+'.json'),value)
         print('审阅完成',job['id'],value['status'],flush=True)
         return value
+    print(f'[审阅] 本批 {len(jobs) if retry_ids is None else len(retry_ids)} 项，并发上限 {config.get("llm", {}).get("max_concurrency", 15)}。', flush=True)
     if retry_ids is not None:
         # Explicit targeted retry only; never reuse reviews after any document changes.
         if prior['documents'] != documents:

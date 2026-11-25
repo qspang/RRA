@@ -336,7 +336,7 @@ def pair_schemes(items, tolerance=50):
     return {'method': '中间20%～80%里程等距采样的平均地图Y坐标，较大者为北方案',
             'shared_tolerance_m': tolerance, 'shared_sampling_m': 25,
             'hausdorff_distance_m': la.hausdorff_distance(lb),
-            'note': '上下位置为整体相对关系；局部可交叉，共用段为几何近似共用。'}
+            'note': '上下位置为整体相对关系；局部可重合或分离，共用段为几何近似共用。'}
 
 
 def extract_facts(scheme, catalog, config, scheme_id):

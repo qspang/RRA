@@ -1,9 +1,10 @@
 import {reader} from './reader.mjs';
 const groups = {description:'路径描述',comparison:'方案比选',compliance:'合规分析',assembly:'综合报告'};
 const chapters = {description:'3.3.1 北方案 · 3.3.2 南方案',comparison:'3.3 路径方案比选',compliance:'3.4.8–3.4.11 · 3.5',assembly:'三个智能体合册'};
-const stages = {queued:'排队中',running:'生成中',loading:'读取地图',extracting_facts:'核查地物与区划',generating_figures:'绘制路径图',writing:'撰写路径描述',rendering:'排版',running_agents:'生成章节',reviewing_reports:'审阅成稿',completed:'生成完成',review_required:'待复核',failed:'生成失败',interrupted:'服务中断',cancelled:'已取消',cancelling:'取消中'};
+const stages = {queued:'排队中',running:'生成中',loading:'读取地图',extracting_facts:'核查地物与区划',generating_figures:'绘制路径图',writing:'撰写路径描述',rendering:'排版',running_agents:'生成章节',quality_review:'审阅成稿',reviewing_reports:'审阅成稿',completed:'生成完成',review_required:'待复核',failed:'生成失败',interrupted:'服务中断',cancelled:'已取消',cancelling:'取消中'};
 const slot = 'road-description.kml.jobs.v1';
 let ids;
+let jobs = new Map();
 try {ids = JSON.parse(localStorage.getItem(slot)) || [];} catch {ids=[];}
 let selected=sessionStorage.getItem('rd-active')||ids[0], job, error='', timer, seq=0;
 const escape = t => String(t??'').replace(/[&<>"']/g,k=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[k]));
@@ -32,6 +33,26 @@ function card(key) {
   }).join('');
   return '<article class="rd-card"><h3>'+groups[key]+'</h3><small>'+chapters[key]+'</small><div>'+ (links||'<span>暂无成稿</span>')+'</div></article>';
 }
+function historyLabel(id) {
+  const item = jobs.get(id);
+  if (!item) return '任务 ' + id.slice(0,8);
+  const date = item.created_at.slice(5,16).replace('T',' ');
+  return [date, item.title, stages[item.status] || item.status].filter(Boolean).join(' · ');
+}
+function deliveryPanel() {
+  const files = job?.groups?.assembly || [];
+  const pdf = files.find(f=>f.endsWith('.pdf')), word = files.find(f=>f.endsWith('.docx'));
+  if (!pdf || !word) return '';
+  const base = '/api/reports/'+selected+'/files/';
+  const review = job.review;
+  let note = '分册与合册已生成';
+  if (review?.status==='passed') note = '成稿审阅已通过';
+  else if (review) note = '待复核 · '+review.failed+' 项审阅调用失败，'+review.blocking+' 项审阅有阻断意见';
+  else if (job.status==='running') note = '合册可读，任务仍在运行';
+  else if (job.status==='review_required') note = '待复核';
+  return '<section class="rd-delivery" aria-label="完整报告"><div><h2>完整报告</h2><p>'+escape(note)+'</p></div><div class="rd-delivery-links"><a href="'+base+escUrl(pdf)+'?view=1" target="_blank" rel="noopener">打开 PDF ↗</a><a href="'+base+escUrl(word)+'" download>下载 Word</a></div></section>'+
+    '<details class="rd-book"><summary>在线阅读合册</summary><div class="rd-book-body"></div></details>';
+}
 function draw(){
   const main=document.querySelector('#app main');
   const top=document.querySelector('.top-tools');
@@ -41,10 +62,10 @@ function draw(){
   }
   if(!selected)return;
   const key=section();
-  const visible=key==='overview'?['description','comparison','compliance','assembly']:[key,'assembly'];
+  const visible=key==='overview'?['description','comparison','compliance']:[key];
   const status=job?.status==='running'?(stages[job.stage]||'生成中'):(stages[job?.status]||'读取任务');
   const title=job?.title||'南北方案报告';
-  const history=ids.map((id,i)=>'<option value="'+escape(id)+'" '+(id===selected?'selected':'')+'>任务 '+escape(id.slice(0,8))+(i===0?' · 最近':'')+'</option>').join('');
+  const history=ids.map(id=>'<option value="'+escape(id)+'" '+(id===selected?'selected':'')+'>'+escape(historyLabel(id))+'</option>').join('');
   const current=job?.active?.replace('route_','');
   const canCancel=['running','queued'].includes(job?.status);
   const summaries=(job?.summary||[]).map(r=>'<tr><th>'+escape(r.name)+'</th><td>'+r.km.toFixed(3)+' km</td><td>'+r.tortuosity.toFixed(3)+'</td><td>'+escape(r.counties.join('、'))+'</td></tr>').join('');
@@ -53,12 +74,29 @@ function draw(){
   const heads={description:['方案','出线段描述'],comparison:['指标','北方案','南方案'],compliance:['方案','核查结果','冲突事项','正文组织']};
   const previewRows=job?.previews?.[key]||[];
   const preview=previewRows.length?'<section class="rd-evidence"><h3>'+groups[key]+'摘要</h3><table><thead><tr>'+heads[key].map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+previewRows.map(row=>'<tr>'+row.map(cell=>'<td>'+escape(cell)+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>':'';
-  const hasReader=key!=='overview'&&job?.groups[key]?.length;
+  const hasReader=key!=='overview'&&key!=='assembly'&&job?.groups[key]?.length;
   const metrics=(job?.routes||[]).map(r=>'<div class="route-metric"><small>'+(r.id==='upper'?'北方案':'南方案')+'长度</small><div><b>'+r.km.toFixed(3)+'</b> <span>km</span></div></div>').join('');
-  const html='<section class="rd-report"><header><div><p>'+escape(title)+'</p><h1>'+escape(groups[key]||'报告总览')+'</h1></div><select aria-label="切换报告任务" id="rd-history">'+history+'</select></header><div class="rd-status" role="status"><div class="route-status"><small>报告状态</small><strong>'+escape(status)+'</strong>'+escape(groups[current]||'')+'</div>'+metrics+'</div>' + (error||job?.error?'<p role="alert">'+escape(error||job.error)+'</p>':'')+(hasReader?'<div id="rd-reading"></div><details class="rd-files"><summary>生成稿下载与指标摘要</summary>':'')+'<div class="rd-grid">'+visible.map(card).join('')+'</div>'+preview+evidence+map+(hasReader?'</details>':'')+'<div class="rd-actions">'+(canCancel?'<button id="rd-cancel">取消生成</button>':'')+'<button id="rd-demo">返回原工作空间</button></div></section>';
+  const html='<section class="rd-report"><header><div><p>'+escape(title)+'</p><h1>'+escape(groups[key]||'报告总览')+'</h1></div><select aria-label="切换报告任务" id="rd-history">'+history+'</select></header><div class="rd-status" role="status"><div class="route-status"><small>报告状态</small><strong>'+escape(status)+'</strong>'+escape(groups[current]||'')+'</div>'+metrics+'</div>'+deliveryPanel() + (error||job?.error?'<p role="alert">'+escape(error||job.error)+'</p>':'')+(hasReader?'<div id="rd-reading"></div><details class="rd-files"><summary>生成稿下载与指标摘要</summary>':'')+'<div class="rd-grid">'+visible.map(card).join('')+'</div>'+preview+evidence+map+(hasReader?'</details>':'')+'<div class="rd-actions">'+(canCancel?'<button id="rd-cancel">取消生成</button>':'')+'<button id="rd-demo">返回原工作空间</button></div></section>';
   if(main.dataset.rdContent===html)return;
-  main.dataset.rdContent=html;main.innerHTML=html;
-  if(hasReader)reader(main.querySelector('#rd-reading'),selected,key);
+  const sameReport = main.dataset.rdView === selected+'/'+key;
+  const previousReader = sameReport && main.querySelector('#rd-reading');
+  const previousBook = sameReport && main.querySelector('.rd-book');
+  main.dataset.rdContent=html;
+  main.dataset.rdView=selected+'/'+key;
+  main.innerHTML=html;
+  if(hasReader){
+    const host=main.querySelector('#rd-reading');
+    if(previousReader) host.replaceWith(previousReader);
+    else reader(host,selected,key);
+  }
+  const book=main.querySelector('.rd-book');
+  if(book && previousBook) book.replaceWith(previousBook);
+  else if(book) book.ontoggle=()=>{
+    if(book.open && !book.dataset.loaded){
+      book.dataset.loaded='1';
+      reader(book.querySelector('.rd-book-body'),selected,'assembly');
+    }
+  };
   const indicator=document.querySelector('.sys-status');if(indicator)indicator.innerHTML='<span class="dot"></span>报告工作空间<small>已接入大埔工程地图</small>';
   document.querySelector('#rd-history').onchange=e=>{selected=e.target.value;sessionStorage.setItem('rd-active',selected);job=null;refresh();};
   document.querySelector('#rd-demo').onclick=()=>{selected=null;sessionStorage.setItem('rd-demo','1');location.reload();};
@@ -72,6 +110,8 @@ async function refresh(){
     const result=await request('/api/kml-jobs/'+selected);
     if(version!==seq)return;
     job=result;error='';
+    const entry=jobs.get(selected);
+    jobs.set(selected,{...entry,id:selected,title:job.title,status:job.status,created_at:job.created_at||entry?.created_at||''});
   } catch(e){if(version!==seq)return;error=e.message;}
   draw();
   if(error||['queued','running','cancelling'].includes(job?.status)) timer=setTimeout(refresh,2500);
@@ -96,8 +136,9 @@ new MutationObserver(()=>{draw();const top=document.querySelector('.top-tools');
 async function restore(){
   try{
     const result=await request('/api/kml-jobs/recent');
+    jobs=new Map((result.jobs||[]).map(item=>[item.id,item]));
     ids=result.ids;localStorage.setItem(slot,JSON.stringify(ids));
-    if(!ids.includes(selected)&&!sessionStorage.getItem('rd-demo')) selected=ids[0];
+    if(!ids.includes(selected)&&!sessionStorage.getItem('rd-demo')) selected=(result.jobs||[]).find(item=>item.has_report)?.id || ids[0];
   }catch{}
   draw();refresh();
 }

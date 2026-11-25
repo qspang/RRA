@@ -29,7 +29,7 @@ for sid in ['upper','lower']:
     a=next(i for i,b in enumerate(data['blocks']) if b.get('text','').startswith('3.4.8.1'))
     b=next(i for i,b in enumerate(data['blocks']) if b.get('text','').startswith('3.4.8.2'))
     section=json.dumps(data['blocks'][a:b],ensure_ascii=False)
-    check(sid+'跨越正文不以算法规则或角度占位为主体','系统阈值' not in section and '几何交叉角/规则' not in section and '设计交叉角' not in section)
+    check(sid+'跨越正文不以算法规则或角度占位为主体','系统阈值' not in section and '几何跨越角/规则' not in section and '设计跨越角' not in section)
     check(sid+'一般道路集中索引图',any(x['type']=='figure_grid' for x in data['blocks'][a:b]))
     c=next(i for i,x in enumerate(data['blocks']) if x.get('text','').startswith('3.4.9'))
     outage=json.dumps(data['blocks'][b:c],ensure_ascii=False)

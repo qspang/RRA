@@ -64,7 +64,7 @@ def test_partial_crossing_design_does_not_hide_remaining_requirements():
     design={'status':'confirmed_input','input':{'span_m':500}}
     assert set(design_missing(design))=={'跨越方式（塔型排列）','耐张段长度','净空说明','导地线接头要求'}
     # The reference-facing report does not require an unprovided design angle.
-    assert '设计交叉角' not in design_text(design)
+    assert '设计跨越角' not in design_text(design)
     text=design_text(design)
     assert '500m' in text and '耐张段长度' in text and '净空' in text and '待设计资料确认' in text
 

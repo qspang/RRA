@@ -64,3 +64,12 @@ python tools/check_setup.py --config configs/config.dapu-kml.json --deep
 3. **候选线与村界**来自本机的 `GIS相关数据_藏东南(1).zip`。分别取压缩包中「候选路径」下的两份 KML、「梅州村界」下的整套文件，本机集中放在 `source/大埔候选路径/`。保留同名的 `.shp`、`.shx`、`.dbf`、`.prj`、`.cpg` 等成员。网页导入只选择两份 KML；额外村界用于复核，公共流水线按 `admin_boundary` 选择量算图层。
 4. **地图快照**从同一工程的规划或报告归档复制 `map.json`、`map.raw.json.gz` 到 KML 配置的 `output_dir`（公开模板为 `outputs/kml_seed/`）。同版 `tiles/` 为可选缓存。已有本机大埔案例配置指向 `outputs/大埔南北候选线_20261124/`，可以直接复用。上传新 KML 时由服务生成两条路线各自的来源记录。
 5. **复现发布案例**时，先对照 [KML SHA256 与样例文件](../outputs/latest/run_summary.json)。除上述输入外，若需重现原初设对照段落和图件，还须向维护方取得原案例配置对应的 `agents.assembly.section_notes`、其引用的素材，以及种子目录中南北方案的原始来源记录。通用 KML 模板默认按本次导入线位重新产出报告。
+
+本机已备好可随工程数据交接的大埔案例目录 `roaddata/cases/dapu/`。其中 `kml_seed/` 有两份地图快照和南、北两条已核实 KML 的来源记录，`section_notes.json` 与 `figures/` 存放依据初设资料补充的段落、表和原图。配图路径相对该 JSON；整个目录可随数据包迁移。到新机器后在 RoadDescription 根目录执行以下命令，适用于公开 KML 模板的默认路径。
+
+```bash
+mkdir -p outputs/kml_seed
+cp -an roaddata/cases/dapu/kml_seed/. outputs/kml_seed/
+```
+
+首次部署请使用空的种子目录。要含原初设对照资料，在本地配置的 `agents.assembly` 中设置 `"section_notes": "roaddata/cases/dapu/section_notes.json"`。工作台以两份 KML 的 SHA-256 匹配归档线位，只有两条都一致才沿用该案例资料。其他工程需要各自的地图快照、地物、方案和经确认的专项资料。

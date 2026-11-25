@@ -31,6 +31,18 @@ def check(config_path, deep=False):
     exists('reference_pdf', config.get('reference_pdf'))
     exists('template', 'templates/route_description_v1.docx')
     opts = config.get('agents', {})
+    if config.get('route_source') == 'kml':
+        seed = root/config['output_dir']
+        for filename in ('map.json', 'map.raw.json.gz'):
+            exists('KML 种子地图/' + filename, seed/filename)
+    note_file = opts.get('assembly', {}).get('section_notes')
+    if note_file and exists('案例章节补充资料', note_file) and deep:
+        from report_agents.assembly import load_section_notes
+        try:
+            load_section_notes(root, note_file)
+            record('案例章节配图', True)
+        except (KeyError, ValueError, OSError) as exc:
+            record('案例章节配图', False, note=str(exc))
     dem = exists('DEM', opts.get('dem_path'), False)
     admin = exists('行政边界', config.get('admin_boundary'), bool(config.get('admin_boundary')))
     if deep and admin and config.get('admin_profile') == 'guangdong_gdb':

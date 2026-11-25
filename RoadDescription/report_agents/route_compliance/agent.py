@@ -18,7 +18,7 @@ from .reference_scenes import render_scenes
 def crossing_conflict_note(item):
     if item.get('angle_status') != 'conflict':return None
     return (f"需复核的具体冲突：{item['label']}（{item['event_id']}，K{item['start_m']/1000:.3f}）"
-            f"的独立GIS交叉角为{item['angle_deg']:.2f}°，低于当前系统规则阈值{item['minimum_angle_deg']:g}°。"
+            f"的独立GIS跨越角为{item['angle_deg']:.2f}°，低于当前系统规则阈值{item['minimum_angle_deg']:g}°。"
             "该项尚未满足当前规则；需核实源线几何、适用规则与跨越设计，必要时调整路线后重算。"
             "未据规划接口返回可行认定本项通过，也未将系统规则阈值冒充已确认的工程设计或审批结论。")
 
@@ -42,7 +42,7 @@ def confirmed_designs(ctx, facts, crossings):
                 if key in item:
                     finite_quantity(item[key])
             if item.get('design_angle_deg', 0) > 90:
-                raise ValueError('设计交叉锐角须在0～90度之间')
+                raise ValueError('设计跨越锐角须在0～90度之间')
         result.append({'input': item if evidence['verified'] else {'source_uids':ids},
                        'crossing_start_m': matches[0]['start_m'],
                        'status': 'confirmed_input' if evidence['verified'] else 'pending', 'evidence':evidence})
@@ -50,7 +50,7 @@ def confirmed_designs(ctx, facts, crossings):
 
 
 DESIGN_FIELDS = [('tower_arrangement','跨越方式（塔型排列）',''), ('span_m','跨越档距','m'),
-                 ('tension_length_m','耐张段长度','m'), ('design_angle_deg','设计交叉角','°'),
+                 ('tension_length_m','耐张段长度','m'), ('design_angle_deg','设计跨越角','°'),
                  ('clearance_note','净空说明',''), ('joint_note','导地线接头要求','')]
 
 
@@ -77,7 +77,7 @@ def ecological_measure(record):
         if record.get('located_tower_count',0):
             return '已有定位塔位落入图示范围，建议优先研究塔位微调避让，核实塔基、便道及牵张场占地；不能避让的部分需结合专题明确措施和办理要求'
         return '现有已定位塔位未落入图示范围，仍需核实逐塔定位是否完整；优先研究减少范围内施工占地，具体措施需专题确认'
-    if record['relation'] == '边界接触':
+    if record['relation'] in ('边界接触','临近（仅接触边界）'):
         return '核对边界精度及保护范围，不能按未穿越直接判定已满足全部要求'
     return '现有边界下位于外侧；施工临时占地及保护范围仍待核查'
 
@@ -142,7 +142,7 @@ class RouteComplianceAgent:
         compact=reference_style(ctx.config)
         technical_blocks=blocks[3:]
         blocks=blocks[:3]
-        blocks += [heading('3.4.8 主要交叉跨越及停电方案'), heading('3.4.8.1 主要交叉跨越概况')]
+        blocks += [heading('3.4.8 主要跨越及停电方案'), heading('3.4.8.1 主要跨越概况')]
         rows, crossing_records = [], []
         for index, crossing in enumerate(m['crossings'], 1):
             design = next((d for d in designs if d['status']=='confirmed_input' and
@@ -159,27 +159,27 @@ class RouteComplianceAgent:
             state = {'pass':'几何角满足当前阈值','conflict':'角度需复核','pending':'待专项核查'}[crossing['angle_status']]
             rows.append([str(index),crossing['category'],crossing['label']+('（隧道段图示）' if crossing.get('tunnel_status')=='tunnel' else ''),
                          f"K{crossing['start_m']/1000:.3f}",'1处'])
-            checks.append({'topic':item['event_id']+'交叉角','status':crossing['angle_status'],
+            checks.append({'topic':item['event_id']+'跨越角','status':crossing['angle_status'],
                            'angle_deg':crossing['angle_deg'],'minimum_angle_deg':crossing['minimum_angle_deg'],
                            'source_uids':crossing['source_uids']})
             if design_missing(design):
                 issues.append(item['event_id']+'：待补'+ '、'.join(design_missing(design)))
         locations = [e for e in crossing_records if e.get('admin_location') and e['presentation_included']]
         if locations:
-            blocks.append(table('主要交叉跨越属地（按交点或相交起始里程）', ['线路里程','地物','县区、乡镇与村级图示位置'],
+            blocks.append(table('主要跨越属地（按交点或相交起始里程）', ['线路里程','地物','县区、乡镇与村级图示位置'],
                 [[f"K{e['start_m']/1000:.3f}", e['label'], e['admin_location']] for e in locations], [3,6,7]))
         if not rows:
-            rows = [['—','现有图层未检出主要交叉跨越','—','—','仍需核查数据覆盖']]
+            rows = [['—','现有图层未检出主要跨越','—','—','仍需核查数据覆盖']]
         if compact:
             grouped={}
             for item in crossing_records:
                 if item['presentation_included']:grouped.setdefault(item['category'],[]).append(item)
             main_rows=[[category,'、'.join(dict.fromkeys(e['label']+('（隧道段投影）' if e.get('tunnel_status')=='tunnel' else '') for e in values)),str(len(values))] for category,values in grouped.items()]
-            blocks.append(prose('本方案主要交叉跨越如下。数量为几何事件，双幅道路等需结合工程设计归并。'))
-            blocks.append(table('表3.4.8-1 主要交叉跨越一览表',['类别','被跨越物名称','图示事件数'],main_rows or [['—','现有图层未检出','—']],[3,11,2]))
+            blocks.append(prose('本方案主要跨越如下。数量为几何事件，双幅道路等需结合工程设计归并。'))
+            blocks.append(table('表3.4.8-1 主要跨越一览表',['类别','被跨越物名称','图示事件数'],main_rows or [['—','现有图层未检出','—']],[3,11,2]))
         else:
-            blocks.append(prose(f"本方案根据现有地物资料识别{len(crossing_records)}个几何交叉事件，具体对象与位置如下。补充道路单列注明等级待核；双幅道路或匝道可能产生多个交点，工程跨越处数应结合档距和施工设计归并。图示交点不能代替最终跨越档距、塔位与施工设计。"))
-            blocks.append(table('表3.4.8-1 主要交叉跨越一览表',
+            blocks.append(prose(f"本方案根据现有地物资料识别{len(crossing_records)}个几何跨越事件，具体对象与位置如下。补充道路单列注明等级待核；双幅道路或匝道可能产生多个交点，工程跨越处数应结合档距和施工设计归并。图示交点不能代替最终跨越档距、塔位与施工设计。"))
+            blocks.append(table('表3.4.8-1 主要跨越一览表',
                                 ['序号','类别','被跨越物','路径里程','事件数'], rows, [1,3.5,6,3,2]))
         for item in crossing_records:
             note=crossing_conflict_note(item)
@@ -228,8 +228,8 @@ class RouteComplianceAgent:
                         blocks.append({'type':'figure','path':material['path'],
                                        'caption':f"图3.4.8-{index}资料 {material['title']}（已确认提供资料）"})
             if minor_figures:
-                blocks += [prose('一般道路及补充小路交叉位置集中列示如下，里程与上表对应。道路等级、通行与施工条件仍需核实。'),
-                           {'type':'figure_grid','images':minor_figures,'caption':'图3.4.8-道路索引 一般道路及补充小路交叉位置（影像/矢量图源见各图）'}]
+                blocks += [prose('一般道路及补充小路跨越位置集中列示如下，里程与上表对应。道路等级、通行与施工条件仍需核实。'),
+                           {'type':'figure_grid','images':minor_figures,'caption':'图3.4.8-道路索引 一般道路及补充小路跨越位置（影像/矢量图源见各图）'}]
             if len(crossing_records)>max_figures:
                 blocks.append(prose(f'共{len(crossing_records)}个跨越事件，正文绘制前{max_figures}处；其余事件均保留在跨越表及JSON中。'))
                 issues.append('3.4.8.1：配置限制导致部分跨越图未绘制，完整交付应取消max_crossing_figures限制')
@@ -245,7 +245,7 @@ class RouteComplianceAgent:
                     electrical.setdefault(item['label'],[]).append(f"K{item['start_m']/1000:.3f}")
             blocks.append(prose('（1）停电范围及施工时序'))
             if electrical:
-                blocks.append(prose('根据本方案交叉跨越识别结果，以下电力线路应纳入施工停电或不停电跨越方案的协调核查。是否需要停电及具体时长尚待设计、运行和调度部门确定。'))
+                blocks.append(prose('根据本方案跨越识别结果，以下电力线路应纳入施工停电或不停电跨越方案的协调核查。是否需要停电及具体时长尚待设计、运行和调度部门确定。'))
                 blocks.append(table('表3.4.8-2 施工停电协调对象及待定安排',
                     ['实施项目','拟协调线路及位置','停电时间','施工时序/备注'],
                     [[ctx.config['project_title'],name+'；'+ '、'.join(stations),'待调度确认','跨越施工；停电必要性、方式及同停组合待确认'] for name,stations in electrical.items()],
@@ -351,7 +351,7 @@ class RouteComplianceAgent:
         else:
             blocks += [heading('本方案核查结论与待办'),*paragraphs,
                        heading('附：技术核查记录（供复核）'),*technical_blocks,
-                       prose('交叉角及算法规则阈值保留在跨越核查.csv和result.json中，用于内部复核，不作为正文工程设计参数或审批结论。'),
+                       prose('跨越角及算法规则阈值保留在跨越核查.csv和result.json中，用于内部复核，不作为正文工程设计参数或审批结论。'),
                        table('资料与复核待办',['序号','事项'],[[str(i),text] for i,text in enumerate(issues,1)],[1.5,14.5])]
         document=render_document(ctx,out/f"{fact['name']}_路径合规性分析.docx",blocks,f"{fact['name']}路径合规性分析",30)
         with (out/'跨越核查.csv').open('w',encoding='utf-8-sig',newline='') as stream:

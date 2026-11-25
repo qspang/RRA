@@ -94,8 +94,8 @@ def audit(config_path,live=False):
         check(name+'原始响应哈希未改变',original.is_file() and file_hash(original)==source.get('source_sha256'))
         # Response provenance remains in the original planning_attempts directory.
         row('路径描述',chapter,'起终点、逐段走向/长度、总长/曲折系数','已实算',f"{name}：{len(s['segments'])}段，{s['metrics']['length_m']/1000:.3f}km；response.json与route_facts.json")
-        row('路径描述',chapter,'经过地物及重复交叉的位置','已实算',f"{len(s['events'])}个事件均入正文，保留source_uids和里程")
-        row('路径描述',chapter,'平行区段、共同段、规则与避让依据','已实算',f"平行记录{len(s.get('physical_parallel',[]))}条；邻近禁行记录{len(s['constraints'])}条；shared_ends已计算",'仅描述地图中实际存在的关系，不能复制原PDF的20km等数字')
+        row('路径描述',chapter,'经过地物及重复跨越的位置','已实算',f"{len(s['events'])}个事件均入正文，保留source_uids和里程")
+        row('路径描述',chapter,'平行区段、共同段、规则与避让依据','已实算',f"平行记录{len(s.get('physical_parallel',[]))}条；临近禁行记录{len(s['constraints'])}条；shared_ends已计算",'仅描述地图中实际存在的关系，不能复制原PDF的20km等数字')
         row('路径描述',chapter,'正式地名及完整行政区县统计','部分具备','有专名则使用原属性；其他用类别及里程定位','完整行政区划、未命名地物专名及正式站名待甲方确认' if not s['admin_complete'] else '')
         row('路径描述',chapter,'总览与沿线图片','部分具备',f"已生成{len(s['figure_ids'])}张沿线GIS图及双方案总览",'现场照片/获授权航拍影像及拍摄点资料待补；GIS图不冒充实景')
         result=compliance['schemes'][sid];events=result['crossings'];figures=result['figures']
@@ -106,7 +106,7 @@ def audit(config_path,live=False):
         check(name+'跨越图保留原始地物ID',all(f.get('source_uids') for f in maps))
         # Every compliance crossing must also appear in the descriptive facts.
         check(name+'描述与合规跨越对应',all(any(set(e['source_uids'])&set(d['source_uids']) and abs(e['start_m']-d['start_m'])<1 for d in s['events']) for e in events))
-        row('合规分析','3.4.8.1',name+'主要交叉跨越一览及逐项说明','已实算',f"{len(events)}个事件；{len(maps)}张平面图；分类/名称、里程、几何角及规则阈值")
+        row('合规分析','3.4.8.1',name+'主要跨越一览及逐项说明','已实算',f"{len(events)}个事件；{len(maps)}张平面图；分类/名称、里程、几何角及规则阈值")
         row('合规分析','3.4.8.1',name+'地形与工程跨越断面','部分具备',f"{len(profiles)}张DEM地形剖面，保留采样点与DEM哈希",'需正式塔位塔型、耐张段长、跨越档距、被跨物标高、导地线弧垂、净空及接头要求；当前不是设计断面')
         for chapter,key,title,missing in [('3.4.8.2','outage','停电方案','调度确认、停电对象/窗口、运行方式、风险与施工安排'),
                 ('3.4.9','demolition','拆迁分类调查表','房屋/棚、坟墓、通信塔的实测数量及调查确认范围'),
@@ -116,7 +116,7 @@ def audit(config_path,live=False):
         row('合规分析','3.4.11',name+'生态敏感点相对位置、影响及处理措施','部分具备',f"原始生态边界筛查{len(result['ecology'])}条记录，含距离/相交长度及系统规则",'施工占地、完整保护范围、逐塔影响和正式专题措施待补；零命中仅限当前图层/范围')
         row('合规分析','3.5',name+'行政区域/部门/办理状态/条件意见','已有确认资料' if result['agreements']['status']=='recorded_closed' else '待外部资料','协议汇总表及来源校验接口已具备','应办部门清单、来往函件与附条件意见落实情况待补')
     matrix=comp['matrix']['rows'];labels=[r[0] for r in matrix]
-    expected=['线路长度','海拔分布','曲折系数','地形划分','沿线矿产','重要交叉跨越','房屋拆迁','穿越生态敏感','穿越生态保护红线','交通条件','军事设施','有关单位意见']
+    expected=['线路长度','海拔分布','曲折系数','地形划分','沿线矿产','重要跨越','房屋拆迁','穿越生态敏感','穿越生态保护红线','交通条件','军事设施','有关单位意见']
     check('比选覆盖参考表全部类别',all(any(k in label for label in labels) for k in expected))
     row('方案比选','3.3','影响因素、两走廊背景与总览','已实算','依据原始地物筛选两路线周边1000m影响因素，保留全清单及source_uids','矿区等专项层缺失不能按无矿解释')
     row('方案比选','3.3.1—3.3.2','两方案描述及图片','已实算','复用同一事实提取、文字组织和GIS绘图实现，分别有完整正文/图组')

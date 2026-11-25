@@ -27,7 +27,7 @@ def main():
             yes(sid+'起终点均在生态范围外',all(not any(is_ecology(f) for f in ctx.catalog.nearby(Point(p))) for p in (line.coords[0],line.coords[-1])))
             yes(sid+'中段进入及离开生态范围',any(i['start_m']>1 and i['end_m']<line.length-1 for e in positive for i in e['intervals']))
         yes(sid+'生态图包含实际正例',all(any(f.get('ecology_source_uid')==e['source_uid'] for f in r['figures']) for e in positive))
-        yes(sid+'每一交叉事件均配图',all(any(f.get('event_id')==e['event_id'] for f in r['figures']) for e in r['crossings']))
+        yes(sid+'每一跨越事件均配图',all(any(f.get('event_id')==e['event_id'] for f in r['figures']) for e in r['crossings']))
         document=Document(r['document']['docx'])
         text='\n'.join(p.text for p in document.paragraphs)+'\n'+'\n'.join(c.text for t in document.tables for row in t.rows for c in row.cells)
         for word in ['高速','漳龙','生态','停电']:yes(sid+'实际Word含'+word,word in text)

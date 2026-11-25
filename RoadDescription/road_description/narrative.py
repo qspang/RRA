@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import requests
+from .terminology import crossing_feature
 from .facts import tunnel_mark
 from .presentation import reference_style,major_event
 from .model_runtime import model_call
@@ -24,28 +25,42 @@ def candidates(facts, config):
         prefix = f"{name}从{config['start_name']}出发，" if i == 0 else '随后'
         text = prefix + f"向{segment['direction']}方向走线约{segment['length_m']/1000:.1f}km"
         if selected:
-            # Keep polygon traversal and line crossing distinct in the body.
-            line_names = [f"{e['label']}"+('隧道段平面投影' if tunnel_mark(e.get('tunnel')) is True else '')+('' if compact else f"（K{e['start_m']/1000:.3f}）") for e in selected if e['relation'] == 'cross']
-            area_names = [f"{e['label']}（K{e['start_m']/1000:.3f}～K{e['end_m']/1000:.3f}）" for e in selected if e['relation'] == 'traverse']
+            line_names, area_names, contacts, boundaries = [], [], [], []
+            for event in selected:
+                label = event['label']
+                kind = event['relation']
+                if kind in ('cross', 'traverse') and crossing_feature(event.get('category') or event['label']):
+                    if tunnel_mark(event.get('tunnel')) is True:
+                        label += '隧道段平面投影'
+                    if not compact:
+                        label += f"（K{event['start_m']/1000:.3f}）"
+                    line_names.append(label)
+                elif kind == 'traverse':
+                    area_names.append(f"{label}（K{event['start_m']/1000:.3f}～K{event['end_m']/1000:.3f}）")
+                elif kind == 'cross':
+                    boundaries.append(label)
+                else:
+                    contacts.append(label)
             if line_names:
-                text += '，沿途与' + '、'.join(dict.fromkeys(line_names)) + '交叉'
+                text += '，沿途跨越' + '、'.join(dict.fromkeys(line_names))
             if area_names:
-                text += '，经过' + '、'.join(area_names) + '的图示范围'
-            contacts = [e['label'] for e in selected if e['relation'] not in ('cross','traverse')]
+                text += '，穿越' + '、'.join(area_names) + '的图示范围'
+            if boundaries:
+                text += '，经过' + '、'.join(boundaries) + '的图示线位（是否穿越范围待核）'
             if contacts:
-                text += '，与'+'、'.join(contacts)+'存在接触关系，具体工程关系待核实'
+                text += '，临近' + '、'.join(contacts) + '（图上仅接触，跨越关系待核）'
         if facts.get('administrative_profile'):
             from .administration import area_at
             landmarks = []
             for event in selected:
-                if event['relation'] != 'cross' or not major_event(event):
+                if event['relation'] != 'cross' or not crossing_feature(event.get('category') or event['label']) or not major_event(event):
                     continue
                 village = area_at(facts['administrative_profile']['village'], event['start_m'])
                 if village and event['name']:
                     qualifier = '隧道段平面投影' if tunnel_mark(event.get('tunnel')) is True else ''
                     landmarks.append((village, event['label']+qualifier))
             if landmarks:
-                text += '。按交点里程定位，'+'，'.join(f'{place}范围内对应{obj}' for place,obj in dict.fromkeys(landmarks))
+                text += '。按跨越处里程定位，'+'，'.join(f'{place}范围内对应{obj}' for place,obj in dict.fromkeys(landmarks))
         if i == len(facts['segments'])-1:
             text += f"，接至{config['end_name']}"
         result.append({'id':segment['fact_id'], 'text':text+'。',
@@ -61,14 +76,14 @@ def candidates(facts, config):
     # Approximate physical parallelism is measured against source lines, not reward polygons.
     for run in sorted(facts.get('physical_parallel',[]),key=lambda r:r.get('start_m',0)):
         result.append({'id':run['fact_id'],
-            'text':f"线路部分区段在{run['label']}附近与其大致平行，连续走线约{run['length_m']/1000:.1f}km。",
+            'text':f"线路部分区段临近{run['label']}并与其大致平行，连续走线约{run['length_m']/1000:.1f}km。",
             'fact_ids':[run['fact_id']],'group':'rule'})
     for constraint in ([] if compact else facts['constraints']):
         if constraint['label'] in used:
             continue
         used.add(constraint['label'])
         text = (f"按系统地物规则，{constraint['label']}属于禁止通行范围；"
-                f"本方案从该范围外侧通过，与所查本体边界的最近平面距离约{constraint['distance_m']:.0f}m。")
+                f"本方案临近该范围并从外侧通过，与所查本体边界的最近平面距离约{constraint['distance_m']:.0f}m。")
         result.append({'id':constraint['fact_id'], 'text':text,
                        'fact_ids':[constraint['fact_id']], 'group':'rule'})
     m = facts['metrics']

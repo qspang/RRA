@@ -1,4 +1,3 @@
-当前版本交付文件
 RoadDescription/.env.example
 RoadDescription/.gitignore
 RoadDescription/README.md
@@ -12,6 +11,7 @@ RoadDescription/docs/PUBLISH_FILES.txt
 RoadDescription/docs/PUBLISH_REVIEW.md
 RoadDescription/docs/REQUIRED_INPUTS.md
 RoadDescription/docs/ROADDATA_VALIDATION.md
+RoadDescription/outputs/README.md
 RoadDescription/outputs/latest/README.md
 RoadDescription/outputs/latest/run_summary.json
 RoadDescription/outputs/latest/图3.3-1_区域高亮.jpg
@@ -63,10 +63,13 @@ RoadDescription/road_description/pipeline.py
 RoadDescription/road_description/planner.py
 RoadDescription/road_description/presentation.py
 RoadDescription/road_description/quality_review.py
+RoadDescription/road_description/report_files.py
 RoadDescription/road_description/runlog.py
 RoadDescription/road_description/service.html
 RoadDescription/road_description/service.py
 RoadDescription/road_description/source_layers.py
+RoadDescription/road_description/startup.py
+RoadDescription/road_description/terminology.py
 RoadDescription/road_description/workbench/proxy.mjs
 RoadDescription/road_description/workbench/reader.mjs
 RoadDescription/road_description/workbench/routes.mjs
@@ -110,3 +113,4 @@ RoadDescription/tools/verify_delta_workflow.py
 RoadDescription/tools/verify_map_edits.py
 RoadDescription/tools/verify_project_job.py
 RoadDescription/tools/verify_report_service.py
+RoadDescription/tools/with_archived_outputs.py

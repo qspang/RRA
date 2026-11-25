@@ -12,7 +12,7 @@
 | LLM/VLM接入 | clone不带真实地址、模型账户或密钥 | 本地配置 `api_base`、`model_id`；`.env` 或环境变量 |
 | 卫星底图 | 外部服务授权、网络、浏览器与地图接口可用；矢量底图可验证流程 | 规划系统底图配置；报告 `use_satellite`/`basemap_mode` |
 | PDF渲染与字体 | 安装LibreOffice、中文字体和目标西文字体 | `soffice` 或系统PATH；本机`.tools`不上传 |
-| 正式行政区边界 | 目前缺独立完整边界，现有地物的地名字段并不等价于完整区划面 | `admin_boundary`、`admin_name_field` |
+| 正式行政区边界 | 广东省县、镇、村界已接入；正式引用仍需确认数据来源、版本及适用日期 | `admin_boundary`、`admin_profile`，见 roaddata/README.md |
 | 照片、现场跨越和道路等级 | 图层不足以证明现场状态，缺失的不能凭模型编造 | `roaddata/materials/`，按素材示例填写 |
 | 3.4.9—3.4.10相关专业调查/协议 | 需甲方提供真实确认件与专项口径 | supplemental示例，关联 `route_geometry_hash` 与 `source_file` |
 | 停电方案/时间/窗口及专业意见 | 地物只能识别相关线路，不能推算出正式停电安排 | 已确认的专项材料 |

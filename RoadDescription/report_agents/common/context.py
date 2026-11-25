@@ -4,7 +4,7 @@ import math
 
 from road_description.facts import Catalog, canonical_path, extract_facts, pair_schemes
 from road_description.io import read_json, file_hash, digest, config_root
-from road_description.planner import select_scheme
+from road_description.planner import report_scheme
 from road_description.model_runtime import prepare_model_config
 
 
@@ -81,7 +81,7 @@ def load_context(config_path):
         if stamp is not None and map_data.get('manifest_mtime') is not None:
             if abs(float(stamp) - float(map_data['manifest_mtime'])) > 1:
                 raise ValueError('规划结果与地图快照版本不一致')
-        scheme = select_scheme(response)
+        scheme = report_scheme(response, config, root, map_data)
         route = canonical_path(scheme, config.get('start'))
         for name, endpoint in (('start', route.coords[0]), ('end', route.coords[-1])):
             if not config.get(name) or math.dist(endpoint, config[name]) > 1:
@@ -95,7 +95,7 @@ def load_context(config_path):
     old_path = source / 'route_facts.json'
     if old_path.exists():
         old = read_json(old_path)
-        for key in ('manifest_sha256', 'features_sha256', 'rules_sha256','adjustments_sha256','supplemental_layers_sha256'):
+        for key in ('manifest_sha256', 'features_sha256', 'rules_sha256','adjustments_sha256','supplemental_layers_sha256','admin_boundary_sha256'):
             if old.get('provenance', {}).get(key) != catalog.provenance.get(key):
                 raise ValueError('已归档事实与当前GIS数据哈希不匹配，请先重新生成路径描述')
         prior = {s['id']: s['geometry_hash'] for s in old['schemes']}

@@ -32,7 +32,13 @@ def check(config_path, deep=False):
     exists('template', 'templates/route_description_v1.docx')
     opts = config.get('agents', {})
     dem = exists('DEM', opts.get('dem_path'), False)
-    exists('行政边界（未配置时仅使用现有地物属性）', config.get('admin_boundary'), False)
+    admin = exists('行政边界', config.get('admin_boundary'), bool(config.get('admin_boundary')))
+    if deep and admin and config.get('admin_profile') == 'guangdong_gdb':
+        import pyogrio
+        from road_description.administration import LAYERS
+        for layer, names, code in LAYERS.values():
+            info = pyogrio.read_info(admin, layer=layer)
+            record(layer, bool(info['crs']) and set(names + ([code] if code else [])) <= set(info['fields']))
     for index, spec in enumerate(config.get('supplemental_layers', [])):
         source = exists(f'supplemental_layers[{index}]', spec.get('path'))
         if deep and source:

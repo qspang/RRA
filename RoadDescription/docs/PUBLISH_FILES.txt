@@ -1,9 +1,10 @@
-仅以下 RoadDescription/ 文件列入本轮候选（不是已暂存清单）。
+当前版本交付文件
 RoadDescription/.env.example
 RoadDescription/.gitignore
 RoadDescription/README.md
 RoadDescription/assets/reference_header.jpeg
 RoadDescription/configs/README.md
+RoadDescription/configs/config.dapu-kml.example.json
 RoadDescription/configs/config.description.example.json
 RoadDescription/configs/config.example.json
 RoadDescription/docs/DEVELOPMENT.md
@@ -14,8 +15,8 @@ RoadDescription/docs/ROADDATA_VALIDATION.md
 RoadDescription/outputs/latest/README.md
 RoadDescription/outputs/latest/run_summary.json
 RoadDescription/outputs/latest/图3.3-1_区域高亮.jpg
-RoadDescription/outputs/latest/完整报告_参照大埔精简版.docx
-RoadDescription/outputs/latest/完整报告_参照大埔精简版.pdf
+RoadDescription/outputs/latest/大埔南北候选路径综合分析.docx
+RoadDescription/outputs/latest/大埔南北候选路径综合分析.pdf
 RoadDescription/report_agents/__init__.py
 RoadDescription/report_agents/__main__.py
 RoadDescription/report_agents/assembly.py
@@ -47,6 +48,7 @@ RoadDescription/requirements-lock.txt
 RoadDescription/requirements.txt
 RoadDescription/road_description/__init__.py
 RoadDescription/road_description/__main__.py
+RoadDescription/road_description/administration.py
 RoadDescription/road_description/automatic_routes.py
 RoadDescription/road_description/browser_basemap.py
 RoadDescription/road_description/document.py
@@ -65,8 +67,16 @@ RoadDescription/road_description/runlog.py
 RoadDescription/road_description/service.html
 RoadDescription/road_description/service.py
 RoadDescription/road_description/source_layers.py
+RoadDescription/road_description/workbench/proxy.mjs
+RoadDescription/road_description/workbench/reader.mjs
+RoadDescription/road_description/workbench/routes.mjs
+RoadDescription/road_description/workbench/style.css
+RoadDescription/road_description/workbench_api.py
+RoadDescription/road_description/workbench_document.py
 RoadDescription/roaddata/README.md
+RoadDescription/run.sh
 RoadDescription/templates/route_description_v1.docx
+RoadDescription/tests/test_administrative_chainage.py
 RoadDescription/tests/test_agents.py
 RoadDescription/tests/test_chapter_delivery.py
 RoadDescription/tests/test_completion.py
@@ -78,6 +88,7 @@ RoadDescription/tests/test_reference_presentation.py
 RoadDescription/tests/test_rich_case.py
 RoadDescription/tests/test_setup.py
 RoadDescription/tests/test_source_review.py
+RoadDescription/tests/test_workbench_import.py
 RoadDescription/tools/audit_data.py
 RoadDescription/tools/audit_delivery.py
 RoadDescription/tools/audit_source_mapping.py
@@ -87,6 +98,7 @@ RoadDescription/tools/check_reference_delivery.py
 RoadDescription/tools/check_rich_delivery.py
 RoadDescription/tools/check_setup.py
 RoadDescription/tools/check_source_review.py
+RoadDescription/tools/connect_workbench.py
 RoadDescription/tools/final_acceptance.py
 RoadDescription/tools/measure_report_run.py
 RoadDescription/tools/plan_demo.py

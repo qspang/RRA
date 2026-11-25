@@ -64,7 +64,7 @@ class RouteComparisonAgent:
         matrix = []
         def add(label, values, note):
             matrix.append([label, *values, note])
-        add('线路长度/km', [f"{f['metrics']['length_m']/1000:.3f}" for f in facts], '最终路径二维中心线几何；与API长度核对')
+        add('线路长度/km', [f"{f['metrics']['length_m']/1000:.3f}" for f in facts], '按路径二维中心线几何量算')
         elevations = []
         for f in facts:
             e = measured[f['id']]['elevation']
@@ -125,7 +125,7 @@ class RouteComparisonAgent:
         else:
             observations.append('本次仅给出指标层面的优劣分析。综合推荐仍需结合各专题资料完整性及专业审查，当前保留待定。')
         if conflicts:
-            observations.append('独立GIS核查发现需复核的约束冲突，不因规划接口返回可行而忽略该差异。')
+            observations.append('沿线GIS核查发现需结合专题资料复核的约束冲突。')
         if compact:observations=[x for x in observations if not any(w in x for w in ('成本','计价','投资'))]
         narrative, mode = organise(ctx, 'route_comparison', observations)
 
@@ -149,7 +149,7 @@ class RouteComparisonAgent:
         for item in ([] if compact else coverage):
             blocks.append(prose(item['type']+'：当前数据包含'+str(item['dataset_count'])+'个要素。'+
                 '；'.join(f['name']+'：'+scope_text(item,f['id']) for f in facts)+'。'))
-        blocks.append(prose('本次为通过不同必经控制点生成的两条测试路线，不是已审定的正式南北大方案。图层距离和范围均对应这组测试路线。'))
+        blocks.append(prose('本册按北方案.kml、南方案.kml提供的候选线位量算，按起点至终点方向计里程。正式推荐方案待专业审查。' if ctx.config.get('route_source')=='kml' else '本次为通过不同必经控制点生成的两条测试路线，不是已审定的正式南北大方案。图层距离和范围均对应这组测试路线。'))
         if ctx.catalog.provenance.get('supplemental_layers'):
             blocks.append(prose('报告同时读取补充道路及完整原始生态GDB。生态范围采用未裁剪原图层，避免遗漏规划裁剪框以外的邻近对象；补充道路等级与通行条件待核。上述补充仅用于报告核查，未改变归档规划的规则、成本或可行性结果。'))
         from road_description.io import write_json
@@ -159,7 +159,11 @@ class RouteComparisonAgent:
             blocks=[heading('3.3 路径方案比选'),
                 prose(f"本线路起于{ctx.config['start_name']}，止于{ctx.config['end_name']}，比较同一起终点的南、北两个路径方案。"),
                 prose('沿线主要影响因素包括高速公路、铁路、输电线路及河流'+('，生态敏感范围包括'+'、'.join(names) if names else '')+'，具体位置见下图。'),
-                prose('本次采用真实规划测试路线；正式站址、推荐方案及专题意见尚待确认。')]
+                prose('本册按北方案.kml、南方案.kml提供的候选线位量算，按起点至终点方向计里程。正式推荐方案待专业审查。' if ctx.config.get('route_source')=='kml' else '本次采用真实规划测试路线；正式站址、推荐方案及专题意见尚待确认。')]
+        if all(f.get('administrative_profile') for f in facts):
+            from road_description.administration import outline
+            blocks.append(table('南北方案沿线行政区域对照', ['方案','图示县区','图示乡镇','沿线村级区域（按首次经过排列）'],
+                [[f['name']] + [outline(f['administrative_profile'][level]) or '待核' for level in ('county','town','village')] for f in facts], [2,3,4,7]))
         # Reuse the same drawing and description tools, without relying on the
         # description agent having previously rendered a Word document.
         figures = generate_figures(ctx.catalog, ctx.facts, out/'figures')

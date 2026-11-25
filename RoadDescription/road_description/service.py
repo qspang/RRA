@@ -139,10 +139,13 @@ class JobManager:
 
 
 def create_app(config_path,job_root):
-    app=Flask(__name__);app.config['MAX_CONTENT_LENGTH']=16384
+    app=Flask(__name__);app.config['MAX_CONTENT_LENGTH']=5*1024*1024
     manager=JobManager(config_path,job_root);app.extensions['reports']=manager
+    from .workbench_api import register
+    register(app, manager)
     @app.before_request
     def protect():
+        if request.endpoint=='submit' and (request.content_length or 0)>16384:abort(413)
         if request.host.split(':')[0] not in ('127.0.0.1','localhost','[::1]'):abort(403)
         if request.method=='POST' and request.headers.get('Origin'):
             from urllib.parse import urlparse
@@ -169,7 +172,8 @@ def create_app(config_path,job_root):
         root=manager.folder(jid)/'output';path=(root/name).resolve()
         if not path.is_relative_to(root) or path.suffix.lower() not in ('.docx','.pdf','.txt','.json','.csv','.png','.log','.jsonl'):abort(403)
         if not path.is_file():abort(404)
-        return send_file(path,as_attachment=True)
+        inline_pdf = request.args.get('view') == '1' and path.suffix.lower() == '.pdf'
+        return send_file(path,as_attachment=not inline_pdf)
     @app.get('/')
     def index():return (Path(__file__).parent/'service.html').read_text()
     return app
@@ -177,4 +181,16 @@ def create_app(config_path,job_root):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--config',required=True);parser.add_argument('--jobs',default='outputs/report_jobs');parser.add_argument('--port',type=int,default=5010)
-    args=parser.parse_args();create_app(args.config,args.jobs).run(host='127.0.0.1',port=args.port,threaded=True)
+    parser.add_argument('--workbench',action='store_true',help='启动集成工作台并输出访问地址')
+    args=parser.parse_args()
+    if args.workbench:
+        import logging
+        from werkzeug.serving import make_server
+        # Bind before opening the job store. A duplicate launch must not alter running jobs.
+        with make_server('127.0.0.1',args.port,None,threaded=True) as server:
+            server.app = create_app(args.config,args.jobs)
+            logging.getLogger('werkzeug').setLevel(logging.WARNING)
+            print(f'http://127.0.0.1:{server.server_port}/workbench/#description',flush=True)
+            server.serve_forever()
+    else:
+        create_app(args.config,args.jobs).run(host='127.0.0.1',port=args.port,threaded=True)

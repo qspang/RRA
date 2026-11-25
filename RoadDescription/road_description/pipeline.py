@@ -3,7 +3,7 @@ from pathlib import Path
 import time
 
 from .io import read_json,write_json,public_data,archive_map, config_root
-from .planner import PlannerClient,select_scheme
+from .planner import PlannerClient,report_scheme
 from .facts import Catalog,extract_facts,pair_schemes
 from .narrative import compose,inspect_photo
 from .figures import generate_figures
@@ -85,7 +85,7 @@ def run(config_path,plan=False,description_only=False):
                 if all(k in requested for k in (kind+'_x',kind+'_y')) and config.get(kind):
                     if __import__('math').dist([requested[kind+'_x'],requested[kind+'_y']],config[kind])>1:
                         raise ValueError('报告配置与归档规划请求的起终点不一致')
-            chosen=select_scheme(response)
+            chosen=report_scheme(response, config, root, map_data)
             extracted.append(extract_facts(chosen,catalog,config,item['id']))
             response_provenance.append({'source':str(target/'response.json'),'plan_run_id':response.get('plan_run_id'),
                                         'scheme_id':chosen.get('id'),'request':str(target/'request.json')})
@@ -125,7 +125,7 @@ def run(config_path,plan=False,description_only=False):
             'length_checks':[{'id':s['id'],'geometry_m':s['metrics']['length_m'],'api_m':s['metrics']['api_length_m']} for s in extracted],
             'missing':{s['name']:s['missing'] for s in extracted},'photos_pending':not any(f['kind']=='approved_photo' for f in figures),
             'model_modes':{sid:n['mode'] for sid,n in narratives.items()},'pdf':pdf,
-            'scope':'路径通过当前规划模型校核；不代表已经完成全部实际直线塔定位或专业审批',
+            'scope':'按提供的KML线位独立进行GIS核查' if config.get('route_source')=='kml' else '路径通过当前规划模型校核；不代表已经完成全部实际直线塔定位或专业审批',
             'font_note':'DOCX指定宋体/Times New Roman；本机预览可能由Noto Serif CJK/Liberation Serif替代，需在安装原字体的Word中确认。'}
         write_json(out/'validation.json',validation)
         import csv
@@ -136,7 +136,7 @@ def run(config_path,plan=False,description_only=False):
                     writer.writerow([s['name'],e['fact_id'],round(e['start_m'],1),round(e['end_m'],1),
                                      e['label'],e['relation'],';'.join(e['source_uids']),e['name_source']])
         lines=['路径描述样章生成说明','',config['project_title'],'',
-               '该文档使用真实规划接口响应及底层地物资料生成。模型实际调用模式和现场素材缺口分别见下方及validation.json。',
+               '依据所提供的南北方案KML及大埔工程GIS底图生成。' if config.get('route_source')=='kml' else '该文档使用真实规划接口响应及底层地物资料生成。模型实际调用模式和现场素材缺口分别见下方及validation.json。',
                '']
         for s in facts['schemes']:
             lines.append(f"{s['name']}：{s['metrics']['length_m']/1000:.3f}km；曲折系数{s['metrics']['tortuosity']:.3f}；重要地物事件{len(s['events'])}项。")

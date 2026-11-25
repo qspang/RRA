@@ -109,7 +109,7 @@ def review_reports(config, out, retry_ids=None):
     comparisons=out/'agents/route_comparison/result.json'
     compliance=out/'agents/route_compliance/result.json'
     evidence={'schemes':[{'id':s['id'],'name':s['name'],'metrics':s['metrics'],
-                          'counties':s['counties'],'villages':s.get('villages',[]),'admin_complete':s['admin_complete'],
+                          'administrative_profile':s.get('administrative_profile',{}),'counties':s['counties'],'villages':s.get('villages',[]),'admin_complete':s['admin_complete'],
                           'segments':s['segments'],'terrain':s.get('terrain',[]),'physical_parallel':s.get('physical_parallel',[]),
                           'shared_ends':s.get('shared_ends',{}),
                           'display_values':{'description_length_km':f"{s['metrics']['length_m']/1000:.1f}",

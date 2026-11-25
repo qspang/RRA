@@ -34,11 +34,26 @@ def candidates(facts, config):
             contacts = [e['label'] for e in selected if e['relation'] not in ('cross','traverse')]
             if contacts:
                 text += '，与'+'、'.join(contacts)+'存在接触关系，具体工程关系待核实'
+        if facts.get('administrative_profile'):
+            from .administration import area_at
+            landmarks = []
+            for event in selected:
+                if event['relation'] != 'cross' or not major_event(event):
+                    continue
+                village = area_at(facts['administrative_profile']['village'], event['start_m'])
+                if village and event['name']:
+                    qualifier = '隧道段平面投影' if tunnel_mark(event.get('tunnel')) is True else ''
+                    landmarks.append((village, event['label']+qualifier))
+            if landmarks:
+                text += '。按交点里程定位，'+'，'.join(f'{place}范围内对应{obj}' for place,obj in dict.fromkeys(landmarks))
         if i == len(facts['segments'])-1:
             text += f"，接至{config['end_name']}"
         result.append({'id':segment['fact_id'], 'text':text+'。',
                        'fact_ids':[segment['fact_id']]+[e['fact_id'] for e in selected],
                        'group':'route'})
+    if facts.get('administrative_profile'):
+        from .administration import description_entries
+        result.extend(description_entries(facts['administrative_profile'], facts['id']))
     used = set()
     for item in ([] if compact else facts.get('terrain',[])):
         result.append({'id':item['fact_id'],'group':'rule','fact_ids':[item['fact_id']],
@@ -62,10 +77,12 @@ def candidates(facts, config):
     if counties:
         if facts['admin_complete']:
             text += '线路行经'+'、'.join(counties)+f'，共计{len(counties)}个县区。'
+        elif facts.get('administrative_profile'):
+            text += '县界图层已识别'+ '、'.join(counties)+'，部分区段属地待核。'
         else:
             text += '沿线相交地物的属地记录涉及'+'、'.join(counties)+'，完整行政区划仍需核对。'
     result.append({'id':facts['id']+'_M', 'text':text,'fact_ids':[facts['id']+'_M'], 'group':'summary'})
-    if facts.get('villages'):
+    if facts.get('villages') and not facts.get('administrative_profile'):
         result.append({'id':facts['id']+'_V','text':'沿线相交地物行政或坐落单位字段记录的村镇名称包括'+
             '、'.join(dict.fromkeys(v['name'] for v in facts['villages']))+'；该名单仅表示已有地物的属地记录，不代替完整村镇边界核查。',
             'fact_ids':[facts['id']+'_V'],'group':'summary'})

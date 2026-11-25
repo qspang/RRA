@@ -113,7 +113,7 @@ def render_docx(config,facts,narratives,figures,out,template):
             header.runs[-1].text='  '+config.get('header_title','输电线路路径方案报告（联调样章）')
             fonts(header.runs[-1],9)
     paragraph(doc,config.get('section_number','3.3')+'  路径方案',heading=True)
-    paragraph(doc,'本次以真实规划地图中的同一起终点进行南、北两条路线联调。方案名称按地图整体上下位置确定；中部控制点用于形成不同走廊。以下图件为地图示意，现场照片待补。')
+    paragraph(doc,f"本册采用{config['start_name']}至{config['end_name']}的南北候选线，按起点至终点方向量算里程。示意图叠加现有工程地物与行政区划。"  if config.get('route_source')=='kml' else '本次以真实规划地图中的同一起终点进行南、北两条路线联调。方案名称按地图整体上下位置确定；中部控制点用于形成不同走廊。以下图件为地图示意，现场照片待补。')
     picture(doc.add_paragraph(),figures[0]['path'],16)
     paragraph(doc,f"图 {config.get('section_number','3.3')}-1  南、北方案路径示意图",caption=True)
     by_id={f['id']:f for f in figures}

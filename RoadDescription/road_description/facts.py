@@ -411,7 +411,21 @@ def extract_facts(scheme, catalog, config, scheme_id):
         segments.append(segment)
     # Optional authoritative polygons supersede partial parcel attribution.
     admin_complete = False
-    if config.get('admin_boundary'):
+    admin_profile = {}
+    if config.get('admin_boundary') and config.get('admin_profile') == 'guangdong_gdb':
+        from .administration import guangdong_profile
+        admin_profile = guangdong_profile(route, catalog, config['admin_boundary'])
+        county_layer = admin_profile['county']
+        counties = {}
+        for span in county_layer['runs']:
+            if len(span['labels']) == 1:
+                key = span['labels'][0]
+                area = county_layer['areas'][key]
+                entry = counties.setdefault(key, dict(name=area['name'], first_chainage_m=span['start_m'],
+                    length_m=0, evidence=county_layer['layer'], code=area['code']))
+                entry['length_m'] += span['end_m'] - span['start_m']
+        admin_complete = county_layer['complete']
+    elif config.get('admin_boundary'):
         admin = gpd.read_file(config['admin_boundary']).to_crs(catalog.crs)
         entries, covered = [], []
         for _, row in admin.iterrows():
@@ -434,14 +448,18 @@ def extract_facts(scheme, catalog, config, scheme_id):
                  'straight_distance_m':math.dist(route.coords[0],route.coords[-1]),
                  'tortuosity':route.length/math.dist(route.coords[0],route.coords[-1])},
         segments=segments, events=events, constraints=constraints, physical_parallel=physical_parallel, terrain=sorted(terrain,key=lambda x:x['start_m']),
-        counties=sorted(counties.values(),key=lambda c:c['first_chainage_m']), admin_complete=admin_complete,
+        administrative_profile=admin_profile, counties=sorted(counties.values(),key=lambda c:c['first_chainage_m']), admin_complete=admin_complete,
         villages=[{'name':k,**v} for k,v in villages.items()],
         parallel_runs=[{k:v for k,v in r.items() if k in ('feature_id','feature_name','length_m','start_xy','end_xy')}
                        for r in analysis.get('parallel_bonus_runs', [])],
-        wind_ice=wind, feasibility={'feasible':True, 'cost_model_version':analysis.get('cost_model_version'),
+        wind_ice=wind, feasibility={'feasible':scheme.get('analysis', {}).get('validations', {}).get('feasible'), 'cost_model_version':analysis.get('cost_model_version'),
         'tower_placement':analysis.get('tower_placement'), 'warnings':scheme.get('warnings',[])})
     result['missing'] = []
-    if not admin_complete:
+    if admin_profile:
+        for level, title in [('county','县区'), ('town','乡镇'), ('village','村级')]:
+            if not admin_profile[level]['complete']:
+                result['missing'].append(f"{title}界有{admin_profile[level]['unresolved_m']:.1f}米归属待核")
+    elif not admin_complete:
         result['missing'].append('完整行政区划缺失；仅报告相交地物可证明的属地区县，不据此宣称全线县区数量')
     unnamed = sum(not e['name'] for e in events)
     if unnamed:

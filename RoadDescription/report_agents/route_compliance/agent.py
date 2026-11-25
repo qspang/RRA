@@ -149,6 +149,9 @@ class RouteComplianceAgent:
                            abs(d['crossing_start_m']-crossing['start_m'])<.01 and
                            set(d['input']['source_uids']).intersection(crossing['source_uids'])), None)
             item = dict(crossing, event_id=f'{sid}_CROSS_{index:03d}', design=design)
+            if fact.get('administrative_profile'):
+                from road_description.administration import area_at
+                item['admin_location'] = '、'.join(filter(None, (area_at(fact['administrative_profile'][level], crossing['start_m']) for level in ('county','town','village'))))
             item['presentation_included']=not compact or major_event(item)
             crossing_records.append(item)
             angle = f"{crossing['angle_deg']:.1f}°" if crossing['angle_deg'] is not None else '未计算（面状/资料不足）'
@@ -161,6 +164,10 @@ class RouteComplianceAgent:
                            'source_uids':crossing['source_uids']})
             if design_missing(design):
                 issues.append(item['event_id']+'：待补'+ '、'.join(design_missing(design)))
+        locations = [e for e in crossing_records if e.get('admin_location') and e['presentation_included']]
+        if locations:
+            blocks.append(table('主要交叉跨越属地（按交点或相交起始里程）', ['线路里程','地物','县区、乡镇与村级图示位置'],
+                [[f"K{e['start_m']/1000:.3f}", e['label'], e['admin_location']] for e in locations], [3,6,7]))
         if not rows:
             rows = [['—','现有图层未检出主要交叉跨越','—','—','仍需核查数据覆盖']]
         if compact:
@@ -248,7 +255,7 @@ class RouteComplianceAgent:
             blocks += [prose('（2）停电方案及影响分析'),
                 prose('待取得一次接线图、线路与变电站拓扑、运行方式、负荷和转供能力后，逐组分析停电范围、替代供电路径、失电风险及保障措施。当前地图不包含完整电网运行信息，不能推定“无失电风险”或具体风险等级。'),
                 prose('（3）实施顺序与保障措施'),
-                prose('迁改先后顺序、保供线路、同停组合、停电窗口及复电条件由运行调度与施工方案共同确认。参考资料中的30天/10天安排和荷嘉甲乙线迁改顺序属于参考工程，未套用到本测试路线。')]
+                prose('迁改先后顺序、保供线路、同停组合、停电窗口及复电条件由运行调度与施工方案共同确认。参考初设记载荷嘉甲乙线迁改及30天、10天窗口，两条候选线各自的同停组合和窗口仍需调度确认。')]
             issues.append('3.4.8.2：停电方案与调度依据待补')
 
         blocks.append(heading('3.4.9 沿线拆迁情况'))
@@ -322,6 +329,12 @@ class RouteComplianceAgent:
         else:
             issues.append('3.4.11：施工临时占地、保护范围完整性及正式措施/专题意见待核')
         blocks += [heading('3.5 协议情况'),prose('仅汇总当前方案已人工确认且有来源文件的意见。参考PDF中的部门名单和“同意/无意见”结论未作为本项目已取得的协议。')]
+        if fact.get('administrative_profile'):
+            from road_description.administration import outline
+            county_scope = outline(fact['administrative_profile']['county'])
+            town_scope = outline(fact['administrative_profile']['town'])
+            if county_scope and town_scope:
+                blocks.append(prose(f'沿线协议资料可按{county_scope}归集，图示涉及{town_scope}。办理进度及意见按实际来函登记。'))
         agreement_rows=[[r['region'],str(i),r['department'],r['status_label'],r['conditions'] or r['reference'] or '—'] for i,r in enumerate(letters['records'],1)]
         if not agreement_rows:
             agreement_rows=[['待确认','—','应办协议部门清单待补','未提供复函','尚无法统计办理完成率']]
@@ -330,7 +343,7 @@ class RouteComplianceAgent:
             issues.append('3.5：协议清单/复函尚未闭合（附条件意见不自动转为全部通过）')
 
         status='conflict_requires_review' if any(c['status']=='conflict' for c in checks) or letters['status']=='rejected' else 'pending_evidence'
-        summary=[f"{fact['name']}的当前核查状态为“{'存在需复核冲突' if status=='conflict_requires_review' else '资料待补充'}”。规划接口通过的是当前算法模型校核，不能替代本章涉及的逐塔设计、调查与协议证据。",
+        summary=[f"{fact['name']}的当前核查状态为“{'存在需复核冲突' if status=='conflict_requires_review' else '资料待补充'}”。逐塔设计、现场调查及协议落实情况以相应专业资料为准。",
                  f"已识别{sum(e['presentation_included'] for e in crossing_records)}个主要跨越事件；资料和核查待办共{len(issues)}项，详见随附待补资料清单和机器可读结果。"]
         paragraphs,model=organise(ctx,'route_compliance',summary)
         if compact:

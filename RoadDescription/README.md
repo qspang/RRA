@@ -14,9 +14,9 @@
 
 ## 查看结果
 
-[最新完整 PDF](outputs/latest/完整报告_参照大埔精简版.pdf) · [Word](outputs/latest/完整报告_参照大埔精简版.docx) · [样例及用量说明](outputs/latest/README.md)
+[最新完整 PDF](outputs/latest/大埔南北候选路径综合分析.pdf) · [Word](outputs/latest/大埔南北候选路径综合分析.docx) · [案例说明](outputs/latest/README.md)
 
-仓库仅保留这一套 20 页合成样例。普通乡道的细碎事件不逐项铺满正文；`report_style: "reference"` 按参考章节选取主要对象和代表性截图，完整事件留在运行产生的 JSON/CSV 中。
+仓库仅保留这一套 48 页大埔 KML 合成样例。普通乡道的细碎事件不逐项铺满正文；`report_style: "reference"` 按参考章节选取主要对象和代表性截图，完整事件留在运行产生的 JSON/CSV 中。
 
 ## 开发和交接入口
 
@@ -77,7 +77,7 @@ cp .env.example .env
 - `dataset`：与规划响应匹配的预处理目录，包含 `m1/standardized_features.gpkg`、规则及配套地图数据。统一放在 `roaddata/preprocessed/`。源 GDB、DEM 和预处理数据不随仓库发布，具体结构见 [数据放置说明](roaddata/README.md)。
 - `start` / `end`：规划系统的局部平面坐标，必须落在当前工程范围；示例值只是测试坐标，不是通用经纬度。
 - `reference_pdf`：自行放置有权使用的参考章节 PDF；原始甲方 PDF 不发布；统一放在 `roaddata/reference/大埔章节3.pdf`。
-- `agents.dem_path`、`supplemental_layers`、`admin_boundary`：按当前工程配置 DEM、补充地物和行政边界；不能用空值推断实际不存在地物。
+- `agents.dem_path`、`supplemental_layers`、`admin_boundary`：广东工程将 `guangdong_adm.gdb.7z` 解压到 `roaddata/admin/guangdong_adm.gdb/`，使用示例中的 `admin_profile` 即可按县、镇、村提取里程；按项目配置 DEM 和补充地物；不能用空值推断实际不存在地物。
 - `llm` / `vlm`：填写 `api_base`、`model_id` 并开启 `enabled`；密钥填 `.env` 中对应变量，配置通过 `credential_file` 读取。也可直接设置环境变量。并发上限示例为 15。
 - `output_dir`、`agents.output_dir`：本地输出目录；不要指向发布样例 `outputs/latest`。
 
@@ -177,9 +177,9 @@ python -m report_agents --config configs/config.local.resolved.json --agents rou
 
 上面的 resolved 文件名以实际日志为准。仅做个人负责章节时，用 `configs/config.description.example.json` 创建configs/ 本地配置，再运行完整入口；它只启用路径描述插件、关闭合成，输出 3.3.1、3.3.2。
 
-## 如何复现已发布报告的南北两方案
+## 历史规划案例：通过控制点复现两方案
 
-本节对应 `outputs/latest/完整报告_参照大埔精简版.pdf`，参数来自其实际归档的 `upper/request.json`、`lower/request.json` 和返回的 `replay_request`，不是另选的一组演示点。
+本节对应 2026 年 10 月的控制点规划案例；当前展示的 48 页案例使用外部 KML，导入步骤见“工作台导入南北候选路径”。下列规划，参数来自其实际归档的 `upper/request.json`、`lower/request.json` 和返回的 `replay_request`，不是另选的一组演示点。
 
 **起终点不是启动 opt_v56 服务时的参数，而是在服务启动后提交给规划接口的请求参数。** 后端按前文加载正确数据并保持运行；报告端以同一起终点、两个不同控制点分别调用两次 `POST /api/plan`，每次 `scheme_count=1`，再组合成北/南方案。
 
@@ -405,7 +405,7 @@ python -m road_description --config configs/config.case-reproduce.json --plan
 
 其中包含原 planning_bounds、空 feature_adjustments、空 relax_regions 及求解参数。后端版本还必须兼容这些字段；环境变量开关、算法代码、并发与时间预算同样可能影响搜索结果，不能凭这份参数保证重新搜索得到完全相同的几何。
 
-### 方式二：精确使用已发布案例的历史路线
+### 方式二：精确使用控制点案例的历史路线
 
 若目标是复核**同一条历史路线**上的地物和报告，应另向维护方领取原运行的归档输入，而不是重新求解。需要把以下文件放到案例配置指定的 `outputs/case_reproduce/report/`（此输入包没有上传 Git）：
 
@@ -479,3 +479,37 @@ python tools/measure_report_run.py --config configs/config.local.resolved.json
 参见 [待推送审阅清单](docs/PUBLISH_REVIEW.md) 和 [逐文件清单](docs/PUBLISH_FILES.txt)。仅准备 `RoadDescription/` 子目录内容；不包含 `opt_v56`、道路施工系统或原始 GIS。发布只更新此子目录，实际提交与推送状态以 Git 历史为准。
 
 本地旧说明、过程记录、表格及不再被脚本引用的配置已移入忽略的 `local_archive/`，迁移哈希记录见该目录的 `整理记录.json`。运行配置和历史工具引用的配置已统一移入 `configs/` 并忽略，代码与命令已同步；旧输出保留原路径，避免破坏证据引用。不得把本地归档整体加入 Git。
+
+## 工作台导入南北候选路径
+
+在包含 RoadDescription 的目录启动本地工作台：
+
+```bash
+bash RoadDescription/run.sh 11079
+```
+
+访问 `http://127.0.0.1:11079/workbench/#description`。首次部署需在 RoadDescription 下完成 Python、GIS、LibreOffice 等依赖准备，并执行：
+
+```bash
+git clone https://github.com/PigPigchick/route-planning-agent.git frontend_integration/route-planning-agent
+git -C frontend_integration/route-planning-agent checkout 26f840f2d3a056190c75dc8b0f4dada7d206687f
+cp -n configs/config.dapu-kml.example.json configs/config.dapu-kml.json
+```
+
+按模板的 `output_dir` 将配套地图快照放入 `outputs/kml_seed/`。配置 LLM/VLM 的服务地址、模型 ID 并启用；凭据使用本地环境变量或忽略的 .env 文件。工作台单端口提供前端与报告 API，独立 Node 服务仅在使用原业务后端等功能时需要。
+
+在原前端的工程总览、路径描述、比选、合规页面，点击「导入南北方案」，各选一个 KML，然后点「导入并生成报告」。界面可切换任务、查看沿线路径和叠加图、取消任务。三个智能体各自显示对应的 Word/PDF，综合报告在合册后可下载。复核状态和文档生成状态分别显示。
+
+本机示例文件在 `roaddata/source/大埔候选路径/北方案.kml` 和 `roaddata/source/大埔候选路径/南方案.kml`。每条路线限一个连续 LineString、2 MB、10,000 个顶点，采用 WGS84 经纬度。系统统一路线方向，要求对应端点距离不超过 1 米、路线有实际分歧、全线属于当前工程规划边界。任务使用归档的工程地图和本地 GIS，导入两条已有候选线无需重新启动规划求解。服务端仍需可用的模型配置、数据包、地图快照及 Word/PDF 渲染环境。只有与参考样例两份 KML 的哈希完全一致时才沿用样例的专题补充资料。
+
+从 RoadDescription 目录启动报告服务。本机配置使用已归档的 `configs/config.dapu-kml.json`；其他部署需配置自己的数据目录、模型凭据及含 `map.json` 和 `map.raw.json.gz` 的种子输出目录。工作台依赖外部前端检出到 `frontend_integration/route-planning-agent/`。
+
+```bash
+.venv/bin/python -m road_description.service --config configs/config.dapu-kml.json --jobs outputs/workbench_jobs --port 5010
+```
+
+直接访问 `http://127.0.0.1:5010/workbench/#description` 可使用报告功能。要使用原前端 5173 端口，在 RoadDescription 目录执行 `python tools/connect_workbench.py` 挂载同源转发，然后在外部仓库按其说明启动前端和原业务后端（征询函等功能使用 4318）。从 `http://127.0.0.1:5173/#description` 访问。报告密钥仅由 5010 从本地配置读取。任务、原始上传和成果位于 `outputs/workbench_jobs/<任务ID>/`。
+
+工作台客户端在 `road_description/workbench/`，导入验证与任务查询在 `road_description/workbench_api.py`，后台队列、取消和文件下载复用 `road_description/service.py`。插件继续在 `report_agents/` 下独立开发。
+
+工作台三个报告页从已生成的 Word 文档读取章节、段落、表格及内嵌图件，并在 HTML 中排版。合规页可以切换南、北方案。使用「智能审校」选择段落，直接编辑或输入改写要求，模型建议经人工采用并保存后生效。服务按任务、单册和源文件哈希保存审校内容，并校验版本以防覆盖其他人的修改。在正文区域下载该册的审校 Word/PDF。该入口处理文字审校；GIS 计算、独立报告之间的内容及综合册不会因修改一段文字而自动重算。相关代码位于 `road_description/workbench_document.py` 和 `road_description/workbench/reader.mjs`。

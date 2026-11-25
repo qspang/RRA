@@ -184,6 +184,37 @@ class PlannerClient:
         return self.call('GET', f'/api/jobs/{job_id}/result')
 
 
+def report_scheme(response, config, root, map_data):
+    if config.get('route_source') != 'kml':
+        return select_scheme(response)
+    from xml.etree import ElementTree
+    from pathlib import Path
+    from pyproj import Transformer
+    from .io import file_hash
+    path = Path(root) / response['source']
+    if response.get('input_type') != 'supplied_kml' or file_hash(path) != response['sha256']:
+        raise ValueError('KML来源或文件哈希不匹配')
+    coord = ElementTree.parse(path).findall('.//{*}LineString/{*}coordinates')
+    if len(coord) != 1:
+        raise ValueError('每个候选方案必须提供一条连续KML线')
+    geo = map_data['geo_meta']
+    transformer = Transformer.from_crs(4326, geo['working_crs'], always_xy=True)
+    dx, dy = geo['offset']
+    points = []
+    for vertex in (coord[0].text or '').split():
+        try:
+            lon, lat = map(float, vertex.split(',')[:2])
+        except ValueError as exc:
+            raise ValueError('KML 坐标必须包含有效的经度和纬度') from exc
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise ValueError('KML 经纬度超出有效范围')
+        x, y = transformer.transform(lon, lat)
+        points.append([x + dx, y + dy])
+    if len(points) < 2:
+        raise ValueError('KML 线路至少需要两个坐标点')
+    return {'id': path.stem, 'path': points, 'analysis': {}, 'input_type': 'supplied_kml'}
+
+
 def select_scheme(response):
     if response.get('coarse_review_pending'):
         raise PlannerError('仅有粗规划预览，不生成完成方案报告')

@@ -39,7 +39,7 @@
   },
   "photos": [],
   "name_overrides": {},
-  "admin_boundary": null,
+  "admin_boundary": "roaddata/admin/guangdong_adm.gdb",
   "admin_name_field": "name",
   "nearby_m": 300,
   "use_satellite": true,
@@ -126,5 +126,6 @@
   "basemap_mode": "browser",
   "basemap_annotations": true,
   "report_style": "reference",
-  "project_root": ".."
+  "project_root": "..",
+  "admin_profile": "guangdong_gdb"
 }

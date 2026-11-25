@@ -40,9 +40,23 @@ def unified_blocks(comparison, compliance):
 
 def assemble_all(ctx, comparison, compliance):
     blocks = unified_blocks(comparison, compliance)
+    note_file = ctx.options.get('assembly', {}).get('section_notes')
+    if note_file:
+        notes = read_json(ctx.root / note_file)
+        expanded = []
+        for block in blocks:
+            expanded.append(block)
+            if block['type'] == 'heading':
+                section = block['text'].split()[0]
+                expanded.extend(notes.get(section, []))
+        blocks = expanded
     titles = [b['text'] for b in blocks if b['type']=='heading' and re.match(r'^3\.\d', b['text'])]
     path = ctx.output/'assembly'/'完整报告_路径描述_方案比选_南北方案合规分析.docx'
     def contents(pages):
+        if ctx.config.get('route_source') == 'kml':
+            intro = [heading(ctx.config['project_title']), heading('目录'),
+                     prose(f"本册以导入的南北候选线为依据，自{ctx.config['start_name']}向{ctx.config['end_name']}计列里程。第3.3节比较两条走廊，第3.4.8至3.5节按专题列示各方案核查结果。")]
+            return intro + [prose(f"{title} {'·'*8} {pages.get(title, '—')}") for title in titles] + [{'type':'page_break'}]
         return [heading('目录'), prose('本册汇总三个Agent成果：3.3包含南北路径描述与方案比选；3.4.8—3.4.11及3.5按章节分别列出南北方案核查内容。未取得的调查、设计与审批资料仍按待补处理。')] + [
             prose(f"{title} {'·'*8} {pages.get(title, '—')}") for title in titles] + [{'type':'page_break'}]
     page_map = {}
